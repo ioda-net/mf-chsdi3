@@ -3074,6 +3074,9 @@ msgstr "Name Messstandort"
 msgid "messstellentyp"
 msgstr "Messstellentyp"
 
+msgid "mio_m3"
+msgstr "10<sup>6</sup> [m<sup>3</sup>]"
+
 msgid "modif_validfrom"
 msgstr "Beschlussdatum"
 
@@ -4377,6 +4380,9 @@ msgstr "Typ der Dreiecksvermaschung"
 
 msgid "typnummer"
 msgstr "Typnummer"
+
+msgid "unit_m"
+msgstr "[m]"
 
 msgid "url"
 msgstr "URL"

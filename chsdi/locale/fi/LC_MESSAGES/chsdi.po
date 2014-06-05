@@ -3077,6 +3077,9 @@ msgstr "Name of trial spot"
 msgid "messstellentyp"
 msgstr "Messstellentyp"
 
+msgid "mio_m3"
+msgstr "10<sup>6</sup> [m<sup>3</sup>]"
+
 msgid "modif_validfrom"
 msgstr "Data da conclus"
 
@@ -4380,6 +4383,9 @@ msgstr "Tip da rait triangulara"
 
 msgid "typnummer"
 msgstr "Typnummer"
+
+msgid "unit_m"
+msgstr "[m]"
 
 msgid "url"
 msgstr "URL"

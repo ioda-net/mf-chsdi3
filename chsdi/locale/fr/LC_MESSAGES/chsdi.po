@@ -3074,6 +3074,9 @@ msgstr "Nom du site d’essai"
 msgid "messstellentyp"
 msgstr "Type"
 
+msgid "mio_m3"
+msgstr "10<sup>6</sup> [m<sup>3</sup>]"
+
 msgid "modif_validfrom"
 msgstr "Date de l'arrêt"
 
@@ -4378,6 +4381,9 @@ msgstr "Type de maillage triangulaire"
 
 msgid "typnummer"
 msgstr "N° du type"
+
+msgid "unit_m"
+msgstr "[m]"
 
 msgid "url"
 msgstr "URL"

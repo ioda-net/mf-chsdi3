@@ -3074,6 +3074,9 @@ msgstr "Nome del sito di prova"
 msgid "messstellentyp"
 msgstr "Tipo"
 
+msgid "mio_m3"
+msgstr "10<sup>6</sup> [m<sup>3</sup>]"
+
 msgid "modif_validfrom"
 msgstr "Data della decisione"
 
@@ -4378,6 +4381,9 @@ msgstr "Tipo di magliatura triangolare"
 
 msgid "typnummer"
 msgstr "N° du type"
+
+msgid "unit_m"
+msgstr "[m]"
 
 msgid "url"
 msgstr "URL"

@@ -4463,3 +4463,9 @@ msgstr ""
 
 msgid "ch.swisstopo.sgtk"
 msgstr ""
+
+msgid "unit_m"
+msgstr ""
+
+msgid "mio_m3"
+msgstr ""
