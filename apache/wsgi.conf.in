@@ -32,6 +32,12 @@ WSGIPassAuthorization On
   Header set X-UA-Compatible "IE=Edge"
 </IfModule>
 
+# Redirect map.bafu.admin.ch auf topic=bafu
+RewriteCond %{HTTP_HOST} ^map.bafuiadmin.ch$ [NC]
+RewriteCond %{QUERY_STRING}     ^$             [OR]
+RewriteCond %{QUERY_STRING}     !topic
+RewriteRule ^${apache_entry_path}/(.*)        ^${apache_entry_path}/$1?topic=bafu [QSA,R,NE,L]
+
 # Redirect old main/wsgi stuff
 RedirectMatch permanent ^/main/wsgi/(.*)$ /$1
 RedirectMatch permanent ^${apache_entry_path}/iipimage/(.*)$ ${apache_entry_path}/luftbilder/$1
