@@ -3,6 +3,11 @@
 from chsdi.tests.integration import TestsBase
 
 
+def getLayers(query):
+    for q in query:
+        yield q[0]
+
+
 class TestSearchServiceView(TestsBase):
 
     def test_no_type(self):
@@ -239,3 +244,38 @@ class TestSearchServiceView(TestsBase):
         self.failUnless(len(resp.json['results']) == 1)
         self.failUnless(resp.json['results'][0]['attrs']['origin'] == 'feature')
         self.failUnless(resp.json['results'][0]['attrs']['detail'] == 'general-suworow-denkmal')
+
+    def test_all_selectbyrectangle_layers(self):
+        from chsdi.models import models_from_name
+        from chsdi.models.bod import LayersConfig
+        from sqlalchemy import distinct
+        from sqlalchemy.orm import scoped_session, sessionmaker
+        val = True
+        DBSession = scoped_session(sessionmaker())
+        query = DBSession.query(distinct(LayersConfig.layerBodId)).filter(LayersConfig.selectbyrectangle == val).filter(LayersConfig.staging == 'prod')
+        try:
+            for layer in getLayers(query):
+                # If it fails here, it most probably means given layer does not have sphinx index available
+                self.testapp.get('/rest/services/all/SearchServer', params={'bbox':
+                                                                            '600818.7808825106,197290.49919797093,601161.2808825106,197587.99919797093',
+                                                                            'features': layer, 'type': 'featureidentify'}, status=200)
+
+        finally:
+            DBSession.close()
+
+    def test_all_searchable_layers(self):
+        from chsdi.models import models_from_name
+        from chsdi.models.bod import LayersConfig
+        from sqlalchemy import distinct
+        from sqlalchemy.orm import scoped_session, sessionmaker
+        val = True
+        DBSession = scoped_session(sessionmaker())
+        query = DBSession.query(distinct(LayersConfig.layerBodId)).filter(LayersConfig.searchable == val).filter(LayersConfig.staging == 'prod')
+        try:
+            for layer in getLayers(query):
+                # If it fails here, it most probably means given layer does not have sphinx index available
+                self.testapp.get('/rest/services/all/SearchServer', params={'bbox':
+                                                                            '600818.7808825106,197290.49919797093,601161.2808825106,197587.99919797093', 'features': layer, 'type': 'featuresearch', 'searchText': 'dummy'}, status=200)
+
+        finally:
+            DBSession.close()
