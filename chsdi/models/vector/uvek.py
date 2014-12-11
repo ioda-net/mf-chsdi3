@@ -1419,10 +1419,10 @@ register('ch.bazl.kataster-belasteter-standorte-zivilflugplaetze', kbs_zivilflug
 
 
 class laerm_emissionsplan_eisenbahn_tag(Base, Vector):
-    __tablename__ = 'laerm-emissionsplan_eisenbahn_tag'
+    __tablename__ = 'laerm_emissionsplan_eisenbahn_tag'
     __table_args__ = ({'schema': 'uvek', 'autoload': False})
     __template__ = 'templates/htmlpopup/laerm_emissionsplan_eisenbahn_tag.mako'
-    __bodId__ = 'ch.bav.laerm_emissionsplan_eisenbahn_tag'
+    __bodId__ = 'ch.bav.laerm-emissionsplan_eisenbahn_tag'
     id = Column('bgdi_id', Integer, primary_key=True)
     lin_nr_dfa = Column('lin_nr_dfa', Numeric)
     linienbeze = Column('linienbeze', Text)
@@ -1442,4 +1442,4 @@ class laerm_emissionsplan_eisenbahn_tag(Base, Vector):
     datum = Column('datum', Numeric)
     the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
 
-register('ch.laerm-emissionsplan_eisenbahn_tag', laerm_emissionsplan_eisenbahn_tag)
+register('ch.bav.laerm-emissionsplan_eisenbahn_tag', laerm_emissionsplan_eisenbahn_tag)
