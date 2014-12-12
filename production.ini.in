@@ -37,7 +37,7 @@ sqlalchemy.lubis.url = postgresql://${vars:dbhost}:${vars:dbport}/lubis
 # Mako specific
 mako.directories = chsdi:templates
 
-data_path = /var/local/cartoweb/
+data_path = /var/local/profile/
 geodata_staging = ${geodata_staging}
 sphinxhost = ${sphinxhost}
 wmshost = ${wmshost}
