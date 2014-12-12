@@ -1478,6 +1478,12 @@ msgstr "Altlasten/belastete Standorte öV"
 msgid "ch.bav.laerm-emissionplan_eisenbahn_2015"
 msgstr "Emissionsplan Eisenbahn 2015"
 
+msgid "ch.bav.laerm-emissionsplan_eisenbahn_nacht"
+msgstr "Emissionsplan Eisenbahnlärm 2015 N"
+
+msgid "ch.bav.laerm-emissionsplan_eisenbahn_tag"
+msgstr "Emissionsplan Eisenbahnlärm 2015 T"
+
 msgid "ch.bav.sachplan-infrastruktur-schiene_anhorung"
 msgstr "SIS Anhörung"
 

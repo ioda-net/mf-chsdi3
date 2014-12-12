@@ -1478,6 +1478,12 @@ msgstr "Siti inquinati trasporti pubbl."
 msgid "ch.bav.laerm-emissionplan_eisenbahn_2015"
 msgstr "Piano delle emissioni 2015"
 
+msgid "ch.bav.laerm-emissionsplan_eisenbahn_nacht"
+msgstr "Piano emissioni foniche ferr 2015 N"
+
+msgid "ch.bav.laerm-emissionsplan_eisenbahn_tag"
+msgstr "Piano emissioni foniche ferr 2015 G"
+
 msgid "ch.bav.sachplan-infrastruktur-schiene_anhorung"
 msgstr "SIS consultazione"
 
@@ -1542,13 +1548,13 @@ msgid "ch.bfe.energiestaedte"
 msgstr "Città dell’energia"
 
 msgid "ch.bfe.energiestaedte-2000watt-areale"
-msgstr "Aree a 2000 Watt"
+msgstr "Aree 2000 Watt"
 
 msgid "ch.bfe.energiestaedte-2000watt-aufdemweg"
 msgstr "Città dell’energia verso 2000 Watt"
 
 msgid "ch.bfe.energiestaedte-energieregionen"
-msgstr "Regione-Energia"
+msgstr "Regioni-Energia"
 
 msgid "ch.bfe.kernkraftwerke"
 msgstr "Centrali nucleari"
