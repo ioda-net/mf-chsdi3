@@ -17,11 +17,11 @@ def get_raster(name):
     return result
 
 def init_rasterfiles(datapath, preloadtypes):
-    base_path = 'bund/swisstopo/'
+    base_path = ''
     global _rasterfiles
     _rasterfiles = {
-        'DTM25': datapath + base_path + 'dhm25_25_matrix/mm0001.shp',
-        'DTM2': datapath + base_path + 'swissalti3d/2m/index.shp',
+        'DTM25': datapath + base_path + 'swissalti3d/kombo_2m_dhm25/index.shp',
+        'DTM2': datapath + base_path + 'swissalti3d/kombo_2m_dhm25/index.shp',
         'COMB': datapath + base_path + 'swissalti3d/kombo_2m_dhm25/index.shp'
     }
     for pt in preloadtypes:
