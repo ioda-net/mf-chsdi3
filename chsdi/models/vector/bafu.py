@@ -81,6 +81,7 @@ class Grundwasserschutzareale (Base, Vector):
     status_fr = Column('status_fr', Text)
     status_it = Column('status_it', Text)
     status_en = Column('status_en', Text)
+    source = Column('source', Text)
     the_geom = GeometryColumn(Geometry(dimensions=2, srid=21781))
 
 register('ch.bafu.grundwasserschutzareale', Grundwasserschutzareale)
@@ -102,6 +103,7 @@ class Grundwasserschutzzonen (Base, Vector):
     status_fr = Column('status_fr', Text)
     status_it = Column('status_it', Text)
     status_en = Column('status_en', Text)
+    source = Column('source', Text)
     the_geom = GeometryColumn(Geometry(dimensions=2, srid=21781))
 
 register('ch.bafu.grundwasserschutzzonen', Grundwasserschutzzonen)
@@ -118,6 +120,7 @@ class Gewaesserschutzbereiche (Base, Vector):
     typ_fr = Column('typ_fr', Text)
     typ_it = Column('typ_it', Text)
     typ_en = Column('typ_en', Text)
+    source = Column('source', Text)
     the_geom = GeometryColumn(Geometry(dimensions=2, srid=21781))
 
 register('ch.bafu.gewaesserschutzbereiche', Gewaesserschutzbereiche)
