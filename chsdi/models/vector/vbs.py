@@ -57,11 +57,12 @@ register('ch.vbs.territorialregionen', TERRITORIALREGIONEN)
 
 
 class sim_facilities_a(Base, Vector):
-    __tablename__ = 'sim_fac_anhorung'
+    __tablename__ = 'sim_fac_anhoerung'
     __table_args__ = ({'schema': 'militaer', 'autoload': False})
     __template__ = 'templates/htmlpopup/sim_facilities.mako'
     __bodId__ = 'ch.vbs.sachplan-infrastruktur-militaer_anhorung'
     id = Column('stabil_id', Text, primary_key=True)
+    facility = Column('facility', Text)
     facname_de = Column('facname_de', Text)
     facname_fr = Column('facname_fr', Text)
     facname_it = Column('facname_it', Text)
@@ -80,7 +81,8 @@ class sim_facilities_a(Base, Vector):
     objname_fr = Column('objname_fr', Text)
     objname_it = Column('objname_it', Text)
     bgdi_created = Column('bgdi_created', Text)
-    the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
+    the_geom = Column(Geometry(geometry_type='GEOMETRY',
+                               dimension=2, srid=21781))
 
 register('ch.vbs.sachplan-infrastruktur-militaer_anhorung', sim_facilities_a)
 
@@ -91,6 +93,7 @@ class sim_facilities_k(Base, Vector):
     __template__ = 'templates/htmlpopup/sim_facilities.mako'
     __bodId__ = 'ch.vbs.sachplan-infrastruktur-militaer_kraft'
     id = Column('stabil_id', Integer, primary_key=True)
+    facility = Column('facility', Text)
     facname_de = Column('facname_de', Text)
     facname_fr = Column('facname_fr', Text)
     facname_it = Column('facname_it', Text)
@@ -109,7 +112,8 @@ class sim_facilities_k(Base, Vector):
     objname_fr = Column('objname_fr', Text)
     objname_it = Column('objname_it', Text)
     bgdi_created = Column('bgdi_created', Text)
-    the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
+    the_geom = Column(Geometry(geometry_type='GEOMETRY',
+                               dimension=2, srid=21781))
 
 register('ch.vbs.sachplan-infrastruktur-militaer_kraft', sim_facilities_k)
 
@@ -144,13 +148,14 @@ class sim_planning_k(Base, Vector):
     bgdi_created = Column('bgdi_created', Text)
     __minscale__ = 20005
     __maxscale__ = 500005
-    the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
+    the_geom = Column(Geometry(geometry_type='GEOMETRY',
+                               dimension=2, srid=21781))
 
 register('ch.vbs.sachplan-infrastruktur-militaer_kraft', sim_planning_k)
 
 
 class sim_planning_a(Base, Vector):
-    __tablename__ = 'sim_pl_anhorung'
+    __tablename__ = 'sim_pl_anhoerung'
     __table_args__ = ({'schema': 'militaer', 'autoload': False})
     __template__ = 'templates/htmlpopup/sim_planning.mako'
     __bodId__ = 'ch.vbs.sachplan-infrastruktur-militaer_anhorung'
@@ -179,13 +184,14 @@ class sim_planning_a(Base, Vector):
     bgdi_created = Column('bgdi_created', Text)
     __minscale__ = 20005
     __maxscale__ = 500005
-    the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
+    the_geom = Column(Geometry(geometry_type='GEOMETRY',
+                               dimension=2, srid=21781))
 
 register('ch.vbs.sachplan-infrastruktur-militaer_anhorung', sim_planning_a)
 
 
 class sim_planning_raster_a(Base, Vector):
-    __tablename__ = 'sim_pl_r_anhorung'
+    __tablename__ = 'sim_pl_r_anhoerung'
     __table_args__ = ({'schema': 'militaer', 'autoload': False})
     __template__ = 'templates/htmlpopup/sim_planning.mako'
     __bodId__ = 'ch.vbs.sachplan-infrastruktur-militaer_anhorung'
@@ -214,7 +220,8 @@ class sim_planning_raster_a(Base, Vector):
     bgdi_created = Column('bgdi_created', Text)
     __maxscale__ = 20005
     __minscale__ = 1
-    the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
+    the_geom = Column(Geometry(geometry_type='GEOMETRY',
+                               dimension=2, srid=21781))
 
 register('ch.vbs.sachplan-infrastruktur-militaer_anhorung', sim_planning_raster_a)
 
@@ -249,6 +256,7 @@ class sim_planning_raster_k(Base, Vector):
     bgdi_created = Column('bgdi_created', Text)
     __maxscale__ = 20005
     __minscale__ = 1
-    the_geom = GeometryColumn(Geometry(dimension=2, srid=21781))
+    the_geom = Column(Geometry(geometry_type='GEOMETRY',
+                               dimension=2, srid=21781))
 
 register('ch.vbs.sachplan-infrastruktur-militaer_kraft', sim_planning_raster_k)
