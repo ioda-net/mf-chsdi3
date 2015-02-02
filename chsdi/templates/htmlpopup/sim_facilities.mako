@@ -10,6 +10,7 @@
     description_text = 'description_%s' % lang
     objectname = 'objectname_%s' % lang
 %>
+    <tr><td class="cell-left">${_('tt_sachplan_facility_number')}</td>                <td>${c['attributes']['facility']}</td></tr>
     <tr><td class="cell-left">${_('tt_sachplan_facility_name')}</td>                  <td>${c['attributes'][facname]}</td></tr>
     <tr><td class="cell-left">${_('tt_sachplan_facility_anlageart')}</td>             <td>${c['attributes'][fackind_text] or '-'}</td></tr>
     <tr><td class="cell-left">${_('tt_sachplan_facility_anlagestatus')}</td>          <td>${c['attributes'][facstatus_text] or '-'}</td></tr>
