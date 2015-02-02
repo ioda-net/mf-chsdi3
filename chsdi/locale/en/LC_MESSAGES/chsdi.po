@@ -5016,6 +5016,9 @@ msgstr "Valid from"
 msgid "tt_sachplan_facility_name"
 msgstr "Facility"
 
+msgid "tt_sachplan_facility_number"
+msgstr "Facility number"
+
 msgid "tt_sachplan_facility_uberobjekt"
 msgstr "Belongs to object"
 

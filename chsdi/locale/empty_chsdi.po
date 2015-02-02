@@ -2047,6 +2047,9 @@ msgstr ""
 msgid "tt_ch.bazl.registrationnummer"
 msgstr ""
 
+msgid "tt_sachplan_facility_number"
+msgstr ""
+
 msgid "tt_sachplan-infrastruktur-schiene_aus_anlage"
 msgstr ""
 

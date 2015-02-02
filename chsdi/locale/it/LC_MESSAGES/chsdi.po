@@ -5015,6 +5015,9 @@ msgstr "Data della delibera"
 msgid "tt_sachplan_facility_name"
 msgstr "Installazione"
 
+msgid "tt_sachplan_facility_number"
+msgstr "Numero misura"
+
 msgid "tt_sachplan_facility_uberobjekt"
 msgstr "Oggetto preposto"
 
