@@ -2640,6 +2640,12 @@ msgstr "tamedia"
 msgid "ch.vbs"
 msgstr "DDPS"
 
+msgid "ch.vbs.sachplan-infrastruktur-militaer_anhoerung"
+msgstr "SPM Anhörung"
+
+msgid "ch.vbs.sachplan-infrastruktur-militaer_kraft"
+msgstr "Sachplan Militär"
+
 msgid "ch.vbs.territorialregionen"
 msgstr "Territorial regions"
 

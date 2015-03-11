@@ -1,3 +1,9 @@
+msgid "ch.vbs.sachplan-infrastruktur-militaer_anhoerung"
+msgstr ""
+
+msgid "ch.vbs.sachplan-infrastruktur-militaer_kraft"
+msgstr ""
+
 msgid "ch.bafu.hydrologie-hintergrundkarte"
 msgstr ""
 

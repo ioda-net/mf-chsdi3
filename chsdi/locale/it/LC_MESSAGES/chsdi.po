@@ -2639,6 +2639,12 @@ msgstr "tamedia"
 msgid "ch.vbs"
 msgstr "DDPS"
 
+msgid "ch.vbs.sachplan-infrastruktur-militaer_anhoerung"
+msgstr "PSM consultazione"
+
+msgid "ch.vbs.sachplan-infrastruktur-militaer_kraft"
+msgstr "Piano settoriale militare"
+
 msgid "ch.vbs.territorialregionen"
 msgstr "Regioni territoriali"
 
@@ -5016,7 +5022,7 @@ msgid "tt_sachplan_facility_name"
 msgstr "Installazione"
 
 msgid "tt_sachplan_facility_number"
-msgstr "Numero misura"
+msgstr "Numero installazione"
 
 msgid "tt_sachplan_facility_uberobjekt"
 msgstr "Oggetto preposto"
