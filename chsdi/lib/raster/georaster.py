@@ -21,7 +21,9 @@ def init_rasterfiles(datapath, preloadtypes):
     global _rasterfiles
     _rasterfiles = {
         'DTM25': datapath + base_path + 'dhm25_25_matrix/mm0001.shp',
-        'DTM2': datapath + base_path + 'swissalti3d/2m/index.shp',
+        #'DTM25': '/home/ltjeg/tmp/dhm25/mm0001.shp',
+        #'DTM2': datapath + base_path + 'swissalti3d/2m/index.shp',
+        'DTM2': '/home/ltjeg/tmp/2m/index.shp',
         'COMB': datapath + base_path + 'swissalti3d/kombo_2m_dhm25/index.shp'
     }
     for pt in preloadtypes:
@@ -80,6 +82,7 @@ class GeoRaster:
             if not filename.startswith("/"):
                 filename=dir+'/'+filename
             geo=shape['shp_data']
+            #filename = filename.replace("/var/local/cartoweb/bund/swisstopo/swissalti3d", "/home/ltjeg/tmp")
             tile=tileClass(geo['xmin'], geo['ymin'], geo['xmax'], geo['ymax'], filename)
             self.tiles.append(tile)
 

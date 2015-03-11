@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from chsdi.tests.integration import TestsBase
+import time
+import random
+
+
+def getRandomLine():
+    x1 = 540000 + random.random() * 30000
+    y1 = 170000 + random.random() * 30000
+    x2 = 720000 + random.random() * 30000
+    y2 = 170000 + random.random() * 30000
+    return '[[' + str(x1) + ',' + str(y1) + '], [' + str(x2) + ',' + str(y2) + ']]'
 
 
 class TestProfileView(TestsBase):
@@ -8,6 +18,18 @@ class TestProfileView(TestsBase):
     def setUp(self):
         super(TestProfileView, self).setUp()
         self.headers = {'X-SearchServer-Authorized': 'true'}
+
+    def timing_test(self):
+        coords = []
+        for i in range(100):
+            coords.append(getRandomLine())
+
+        start = time.time()
+        for coord in coords:
+            #print coord
+            resp = self.testapp.get('/rest/services/profile.json', params={'geom': '{"type":"LineString","coordinates":' + coord + '}', 'elevation_models': 'DTM2'}, headers=self.headers, status=200)
+        end = time.time()
+        print "time: " + str(end - start) + ' tests: ' + str(i) + '...' + str((end - start) / i) + ' s per'
 
     def test_profile_json_valid(self):
         resp = self.testapp.get('/rest/services/profile.json', params={'geom': '{"type":"LineString","coordinates":[[550050,206550],[556950,204150],[561050,207950]]}'}, headers=self.headers, status=200)

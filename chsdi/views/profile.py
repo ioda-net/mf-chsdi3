@@ -8,6 +8,10 @@ from chsdi.lib.validation.profile import ProfileValidation
 from chsdi.lib.raster.georaster import get_raster
 from chsdi.lib.decorators import requires_authorization
 
+import time
+
+import json
+
 
 class Profile(ProfileValidation):
 
@@ -38,6 +42,7 @@ class Profile(ProfileValidation):
         return self._compute_points()
 
     def _compute_points(self):
+        start = time.time()
         """Compute the alt=fct(dist) array and store it in c.points"""
         rasters = [get_raster(layer) for layer in self.layers]
 
@@ -48,12 +53,16 @@ class Profile(ProfileValidation):
             linestring = self.linestring
 
         coords = self._create_points(linestring.coords, self.nb_points)
+
         zvalues = {}
         for i in xrange(0, len(self.layers)):
             zvalues[self.layers[i]] = []
             for j in xrange(0, len(coords)):
                 z = rasters[i].getVal(coords[j][0], coords[j][1])
                 zvalues[self.layers[i]].append(z)
+
+        #print "Get all raw points in: " + str(time.time() - start)
+        #start = time.time()
 
         factor = lambda x: float(1) / (abs(x) + 1)
         zvalues2 = {}
@@ -74,6 +83,9 @@ class Profile(ProfileValidation):
                     s += zvalues[self.layers[i]][p] * factor(k)
                     d += factor(k)
                 zvalues2[self.layers[i]].append(s / d)
+
+        #print "EMA in: " + str(time.time() - start)
+        #start = time.time()
 
         dist = 0
         prev_coord = None
@@ -113,6 +125,7 @@ class Profile(ProfileValidation):
                     temp.append(self._filter_coordinate(coords[j][1]))
                     profile['rows'].append(temp)
             prev_coord = coords[j]
+        #print "Creation in: " + str(time.time() - start)
         return profile
 
     def _dist(self, coord1, coord2):
