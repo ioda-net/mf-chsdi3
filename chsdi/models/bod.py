@@ -105,10 +105,13 @@ class LayersConfig(Base):
         layerStaging = self.__dict__['staging']
         if config['type'] == 'wmts':
             del config['singleTile']
-        if config['type'] == 'wms':
+        elif config['type'] == 'wms':
             if layerStaging != 'prod':
                 config['wmsUrl'] = make_agnostic(
                     config['wmsUrl'].replace('wms.geo.admin.ch', wmsHost))
+        elif config['type'] == 'geojson':
+            config['styleUrl'] = make_agnostic(
+                params.request.static_url('chsdi:static/vectorStyles/' + self.layerBodId + '.json'))
         # sublayers don't have attributions
         if 'attribution' in config:
             config['attributionUrl'] = translate(self.__dict__['attribution'] + '.url')

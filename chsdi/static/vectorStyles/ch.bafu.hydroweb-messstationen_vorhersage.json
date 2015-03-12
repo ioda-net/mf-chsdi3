@@ -1,0 +1,36 @@
+{
+  "type": "unique",
+  "property": "vorhersage-class",
+  "values": [
+    {
+      "type": "point",
+      "value": 0,
+      "vectorOptions": {
+        "type": "circle",
+        "radius": 8,
+        "fill": {
+          "color": "#808080"
+        },
+        "stroke": {
+          "color": "#FFFFFF",
+          "width": 1
+        }
+      }
+    }, {
+      "type": "point",
+      "value": 1,
+      "vectorOptions": {
+        "type": "triangle",
+        "radius": 12,
+        "rotation": Math.PI / 3,
+        "fill": {
+          "color": "#808080"
+        },
+        "stroke": {
+          "color": "#FFFFFF",
+          "width": 1
+        }
+      }
+    }
+  ]
+}
