@@ -3,7 +3,7 @@
   "property": "grundwasser-class",
   "values": [
     {
-      "type": "point",
+      "geomType": "point",
       "value": 1,
       "vectorOptions": {
         "type": "circle",
@@ -17,7 +17,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 0,
       "vectorOptions": {
         "type": "triangle",
@@ -32,7 +32,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 2,
       "vectorOptions": {
         "type": "square",

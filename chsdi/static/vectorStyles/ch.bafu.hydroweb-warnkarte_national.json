@@ -3,7 +3,7 @@
   "property": "warning-class",
   "values": [
     {
-      "type": "polygon",
+      "geomType": "polygon",
       "value": 0,
       "vectorOptions": {
         "fill": {
@@ -16,7 +16,7 @@
         }
       }
     }, {
-      "type": "polygon",
+      "geomType": "polygon",
       "value": 1,
       "vectorOptions": {
         "fill": {
@@ -29,7 +29,7 @@
         }
       }
     }, {
-      "type": "polygon",
+      "geomType": "polygon",
       "value": 2,
       "vectorOptions": {
         "fill": {
@@ -42,7 +42,7 @@
         }
       }
     }, {
-      "type": "polygon",
+      "geomType": "polygon",
       "value": 3,
       "vectorOptions": {
         "fill": {
@@ -55,7 +55,7 @@
         }
       }
     }, {
-      "type": "polygon",
+      "geomType": "polygon",
       "value": 4,
       "vectorOptions": {
         "fill": {
@@ -68,7 +68,7 @@
         }
       }
     }, {
-      "type": "polygon",
+      "geomType": "polygon",
       "value": 5,
       "vectorOptions": {
         "fill": {
@@ -81,7 +81,7 @@
         }
       }
     }, {
-      "type": "line",
+      "geomType": "line",
       "value": 0,
       "vectorOptions": {
         "stroke": {
@@ -90,7 +90,7 @@
         }
       }
     }, {
-      "type": "line",
+      "geomType": "line",
       "value": 1,
       "vectorOptions": {
         "stroke": {
@@ -99,7 +99,7 @@
         }
       }
     }, {
-      "type": "line",
+      "geomType": "line",
       "value": 2,
       "vectorOptions": {
         "stroke": {
@@ -108,7 +108,7 @@
         }
       }
     }, {
-      "type": "line",
+      "geomType": "line",
       "value": 3,
       "vectorOptions": {
         "stroke": {
@@ -117,7 +117,7 @@
         }
       }
     }, {
-      "type": "line",
+      "geomType": "line",
       "value": 4,
       "vectorOptions": {
         "stroke": {
@@ -126,7 +126,7 @@
         }
       }
     }, {
-      "type": "line",
+      "geomType": "line",
       "value": 5,
       "vectorOptions": {
         "stroke": {

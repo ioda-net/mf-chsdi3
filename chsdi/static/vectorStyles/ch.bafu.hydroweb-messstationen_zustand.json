@@ -3,7 +3,7 @@
   "property": "quant-class",
   "values": [
     {
-      "type": "point",
+      "geomType": "point",
       "value": 0,
       "vectorOptions": {
         "type": "circle",
@@ -17,7 +17,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 1,
       "vectorOptions": {
         "type": "circle",
@@ -31,7 +31,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 2,
       "vectorOptions": {
         "type": "circle",
@@ -45,7 +45,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 3,
       "vectorOptions": {
         "type": "circle",
@@ -59,7 +59,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 4,
       "vectorOptions": {
         "type": "circle",
@@ -73,7 +73,7 @@
         }
       }
     }, {
-      "type": "point",
+      "geomType": "point",
       "value": 5,
       "vectorOptions": {
         "type": "circle",
