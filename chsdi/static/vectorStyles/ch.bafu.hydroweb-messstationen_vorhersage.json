@@ -22,7 +22,7 @@
       "vectorOptions": {
         "type": "triangle",
         "radius": 12,
-        "rotation": Math.PI / 3,
+        "rotation": 1.0471975511965976,
         "fill": {
           "color": "#808080"
         },

@@ -4,7 +4,7 @@
   "values": [
     {
       "type": "polygon",
-      "radius": 0,
+      "value": 0,
       "vectorOptions": {
         "fill": {
           "color": "#CCFF66",
@@ -17,7 +17,7 @@
       }
     }, {
       "type": "polygon",
-      "radius": 1,
+      "value": 1,
       "vectorOptions": {
         "fill": {
           "color": "#00ff00",
@@ -30,7 +30,7 @@
       }
     }, {
       "type": "polygon",
-      "radius": 2,
+      "value": 2,
       "vectorOptions": {
         "fill": {
           "color": "#FFFF00",
@@ -43,7 +43,7 @@
       }
     }, {
       "type": "polygon",
-      "radius": 3,
+      "value": 3,
       "vectorOptions": {
         "fill": {
           "color": "#FF9900",
@@ -56,7 +56,7 @@
       }
     }, {
       "type": "polygon",
-      "radius": 4,
+      "value": 4,
       "vectorOptions": {
         "fill": {
           "color": "#FF0000",
@@ -69,7 +69,7 @@
       }
     }, {
       "type": "polygon",
-      "radius": 5,
+      "value": 5,
       "vectorOptions": {
         "fill": {
           "color": "#800000",
@@ -82,7 +82,7 @@
       }
     }, {
       "type": "line",
-      "radius": 0,
+      "value": 0,
       "vectorOptions": {
         "stroke": {
           "color": "#CCFF66",
@@ -91,7 +91,7 @@
       }
     }, {
       "type": "line",
-      "radius": 1,
+      "value": 1,
       "vectorOptions": {
         "stroke": {
           "color": "#00ff00",
@@ -100,7 +100,7 @@
       }
     }, {
       "type": "line",
-      "radius": 2,
+      "value": 2,
       "vectorOptions": {
         "stroke": {
           "color": "#FFFF00",
@@ -109,7 +109,7 @@
       }
     }, {
       "type": "line",
-      "radius": 3,
+      "value": 3,
       "vectorOptions": {
         "stroke": {
           "color": "#FF9900",
@@ -118,7 +118,7 @@
       }
     }, {
       "type": "line",
-      "radius": 4,
+      "value": 4,
       "vectorOptions": {
         "stroke": {
           "color": "#FF0000",
@@ -127,7 +127,7 @@
       }
     }, {
       "type": "line",
-      "radius": 5,
+      "value": 5,
       "vectorOptions": {
         "stroke": {
           "color": "#800000",
