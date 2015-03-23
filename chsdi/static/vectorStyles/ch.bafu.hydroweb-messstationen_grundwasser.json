@@ -4,7 +4,7 @@
   "values": [
     {
       "geomType": "point",
-      "value": 1,
+      "value": 2,
       "vectorOptions": {
         "type": "circle",
         "radius": 8,
@@ -18,7 +18,7 @@
       }
     }, {
       "geomType": "point",
-      "value": 0,
+      "value": 1,
       "vectorOptions": {
         "type": "triangle",
         "radius": 12,
@@ -33,7 +33,7 @@
       }
     }, {
       "geomType": "point",
-      "value": 2,
+      "value": 3,
       "vectorOptions": {
         "type": "square",
         "radius": 10,

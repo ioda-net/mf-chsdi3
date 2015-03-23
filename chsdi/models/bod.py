@@ -79,7 +79,7 @@ class LayersConfig(Base):
     staging = Column('staging', Text)
     wmsLayers = Column('wms_layers', Text)
     wmsUrl = Column('wms_url', Text)
-    geojsonUpdateDelay = Column('geojson_update_delay', Integer)
+    updateDelay = Column('geojson_update_delay', Integer)
     geojsonUrlde = Column('geojson_url_de', Text)
     geojsonUrlfr = Column('geojson_url_fr', Text)
     geojsonUrlit = Column('geojson_url_it', Text)

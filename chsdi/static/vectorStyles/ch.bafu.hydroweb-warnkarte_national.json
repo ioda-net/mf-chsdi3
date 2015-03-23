@@ -1,6 +1,6 @@
 {
   "type": "unique",
-  "property": "warning-class",
+  "property": "ws-class",
   "values": [
     {
       "geomType": "polygon",
