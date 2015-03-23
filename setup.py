@@ -35,7 +35,7 @@ requires = [
     'OWSLib',
     'MapProxy',
     'qrcode',
-    'sphinx_rtd_theme==0.1.6-ga3',
+    'sphinx_rtd_theme==0.1.7',
     'boto',
     'PyPDF2',
     'requests',
