@@ -89,7 +89,6 @@ class LayersConfig(Base):
     def layerConfig(self, params):
         config = {}
         translate = params.translate
-        geodataStaging = params.geodataStaging
         excludedAttrs = ('geojsonUrlde', 'geojsonUrlfr', 'geojsonUrlit', 'geojsonUrlrm', 'geojsonUrlen')
         wmsHost = params.request.registry.settings['wmshost']
         for k in self.__dict__.keys():
