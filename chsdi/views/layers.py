@@ -235,11 +235,11 @@ def get_layers_config_for_params(params, query, model, layerIds=None):
         model,
         params.mapName
     )
-    query = filter_by_geodata_staging(
-        query,
-        model.staging,
-        params.geodataStaging
-    )
+    #query = filter_by_geodata_staging(
+    #    query,
+    #    model.staging,
+    #    params.geodataStaging
+    #)
     if layerIds is not None:
         for layerId in layerIds:
             layer = get_layer(query, model, layerId)
