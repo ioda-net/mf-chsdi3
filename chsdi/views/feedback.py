@@ -77,10 +77,11 @@ def feedback(self, request):
     permalink = getParam('permalink', 'No permalink provided')
     feedback = getParam('feedback', 'No feedback provided')
     email = getParam('email', 'Anonymous')
-    text = u'%s just sent a feedback:\n %s. \nPermalink: %s. \n\nUser-Agent: %s'
+    text = u'%s \n %s sent a feedback:\n %s. \nPermalink: %s. \n\nUser-Agent: %s'
     attachement = getParam('attachement', None)
     kml = getParam('kml', None)
     now = datetime.datetime.now()
+    nowiso = datetime.datetime.now().isoformat(' ')
     kmlfilename = 'Drawing-' + now.strftime('%Y%m%d%H%M%S') + '.kml'
     attachfilename = ''
     if isinstance(attachement, cgi.FieldStorage):
@@ -93,14 +94,14 @@ def feedback(self, request):
         'kml': kmlfilename if (kml is not None and kml is not '') else '',
         'attachement': attachfilename,
         'userAgent': ua,
-        'date': now.strftime("%Y-%m-%d %H:%M")
+        'date': nowiso
     }
 
     try:
         mail(
             defaultRecipient,
             defaultSubject,
-            text % (email, feedback, permalink, ua),
+            text % (nowiso, email, feedback, permalink, ua),
             attachement,
             kml,
             kmlfilename,
