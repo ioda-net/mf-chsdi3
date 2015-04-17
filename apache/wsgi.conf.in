@@ -50,6 +50,7 @@ RewriteRule ^${apache_entry_path}/loader.js$ ${apache_entry_path}/${app_version}
 <LocationMatch ^${apache_entry_path}/loader.js>
     Header unset Cache-Control
     Header merge Cache-Control "no-cache"
+    Header unset X-Cache-Hits
 </LocationMatch>
 
 # Static for cross domain flash/arcgis
