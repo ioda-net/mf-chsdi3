@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 
 
+import re
 import esrijson
+import six
 from pyramid.httpexceptions import HTTPBadRequest
 
 from chsdi.lib.helpers import float_raise_nan
 from chsdi.lib.validation import BaseFeaturesValidation
+
+
+if six.PY3:
+    unicode = str
 
 
 class HtmlPopupServiceValidation(BaseFeaturesValidation):
@@ -16,11 +22,13 @@ class HtmlPopupServiceValidation(BaseFeaturesValidation):
         self._featureIds = None
         self._imageDisplay = None
         self._mapExtent = None
+        self._time = None
 
         self.layerId = request.matchdict.get('layerId')
         self.featureIds = request.matchdict.get('featureId')
         self.imageDisplay = request.params.get('imageDisplay')
         self.mapExtent = request.params.get('mapExtent')
+        self.time = request.params.get('time')
 
         self.returnGeometry = False
         self.geometryFormat = u'geojson'
@@ -41,6 +49,10 @@ class HtmlPopupServiceValidation(BaseFeaturesValidation):
     def mapExtent(self):
         return self._mapExtent
 
+    @property
+    def time(self):
+        return self._time
+
     @layerId.setter
     def layerId(self, value):
         if value is not None:
@@ -52,6 +64,8 @@ class HtmlPopupServiceValidation(BaseFeaturesValidation):
     def featureIds(self, value):
         if value is not None:
             self._featureIds = value.split(',')
+            if len(self._featureIds) > int(self.request.registry.settings['max_featureids_request']):
+                raise HTTPBadRequest('Too many featureIds')
         else:
             raise HTTPBadRequest('Please provide featureIds')  # pragma: no cover
 
@@ -65,9 +79,11 @@ class HtmlPopupServiceValidation(BaseFeaturesValidation):
                     'Please provide the parameter imageDisplay in a comma separated list of 3 arguments '
                     '(width,height,dpi)')
             try:
-                self._imageDisplay = map(float_raise_nan, value)
+                self._imageDisplay = list(map(float_raise_nan, value))
             except ValueError:
                 raise HTTPBadRequest('Please provide numerical values for the parameter imageDisplay')
+            if not all(i > 0 for i in self._imageDisplay):
+                raise HTTPBadRequest('All values for parameter "imageDisplay" must be strictly positive')
 
     # Optional
     @mapExtent.setter
@@ -77,6 +93,15 @@ class HtmlPopupServiceValidation(BaseFeaturesValidation):
                 self._mapExtent = esrijson.to_shape([float_raise_nan(c) for c in value.split(',')])
             except ValueError:
                 raise HTTPBadRequest('Please provide numerical values for the parameter mapExtent')
+
+    # Optional
+    @time.setter
+    def time(self, value):
+        if value is not None:
+            try:
+                self._time = int(value) if re.search(r'[12]{1}[0-9]{3}', value) else None
+            except ValueError:
+                raise HTTPBadRequest('Please provide a valid year for the parameter <time>')
 
 
 class ExtendedHtmlPopupServiceValidation(HtmlPopupServiceValidation):

@@ -2,7 +2,10 @@
 
 <%
   from pyramid.url import route_url
-  from urllib2 import urlopen
+  try:
+      from urllib2 import urlopen
+  except ImportError:
+      from urllib.request import urlopen
   from json import loads
 
   c = context
@@ -11,6 +14,7 @@
   baseUrl = '//' + c.get('baseUrl')
   layerBodId = c.get('layer')
   featureId = c.get('bildnummer')
+  contrast = 'true' if c.get('contrast')=='true' else 'false'
   displayLink = True
   ## This is a HACK to ensure backward compatibility
   if not layerBodId.startswith('ch.'):
@@ -79,7 +83,7 @@
         position: absolute;
         top: 60px;
         right: 10px;
-        bottom: 50px;
+        bottom: 65px;
         left: 10px;
         border: 1px solid #EFEFEF;
       }
@@ -91,6 +95,49 @@
         height: 30px;
         margin: 10px 0px;
         text-align:center;
+      }
+      .btn {
+        display: inline-block;
+        margin-bottom: 0;
+        font-weight: normal;
+        text-align: center;
+        vertical-align: middle;
+        -ms-touch-action: manipulation;
+        touch-action: manipulation;
+        cursor: pointer;
+        background-image: none;
+        border: 1px solid transparent;
+        white-space: nowrap;
+        padding: 6px 12px;
+        font-size: 14px;
+        line-height: 1.42857143;
+        border-radius: 4px;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+        line-height: 1.5;
+        border-radius: 3px;
+      }
+      .btn-secondary {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
+      }
+      .button{
+        width:150px;
+        position: absolute;
+        right: 0px;
+        bottom: 0px;
+        left: 50%;
+        height: 30px;
+        margin: 10px 0px;
+        text-align:center;
+        z-index:10;
       }
       .footer a {
         padding: 0px 10px;
@@ -127,7 +174,9 @@
   <body onload="init()">
     <div class="header">${title}</div>
     <div class="wrapper">
-      <div id="lubismap"></div>
+      <div id="lubismap">
+        <button id="contrast_activate" class="button btn btn-secondary btn-sm d-block">${_('image_contrast_activate')}</button>
+      </div>
     </div>
     <div class="footer">
       <a class="pull-left" href="${_('disclaimer url')}" target="_blank">Copyright</a>
@@ -260,7 +309,120 @@
         view.on('propertychange', debounce(updateUrl));
         updateUrl();
 
+        var contrastButtonActivate = document.getElementById("contrast_activate");
+
+        setButtonListener();
+
+        var equalizedValues = undefined;
+        var mean = undefined;
+
+        function isBlack(pixel){
+          return pixel[0]==255 && pixel[1]==255 && pixel[2]==255
+        }
+
+        function isWhite(pixel){
+          return pixel[0]==0 && pixel[1]==0 && pixel[2]==0
+        }
+
+       function getPixelList(data){
+          var pixelList = [];
+          for (var i=0; i<(data.length);i+=4){
+            //data-.slice() doesnt work for E11
+            pixel_values = [data[i], data[i+1], data[i+2], data[i+3]];
+            if (pixel_values[3]!=0 && !(isBlack(pixel_values) || isWhite(pixel_values))){
+              var pixel = [pixel_values[0], pixel_values[1], pixel_values[2], pixel_values[3]];
+              pixelList.push(pixel);
+            }
+          }
+          return pixelList;
+        }
+
+        function allZero(data){
+          for (var i = 0; i < data.length; i += 4){
+            if (data[i] != 0) return false
+          }
+          return true
+        }
+
+        // computes normalized histogram
+        function getHistogramProperties(pixels){
+          var histogram = {};
+          var equalizedHistogram = {};
+          var numberPixels = pixels.length;
+          var sum = 0;
+          var mean_luminance = 0;
+
+          //initialize histogram
+          for (var i = 0; i < 101; i++){
+            histogram[i] = 0;
+          }
+
+          for (var p in pixels){
+            // convert to hcl
+            var pix = pixels[p];
+            var hcl = rgb2hcl(pix);
+            // get luminance values
+            var l = parseInt(hcl[2]);
+            // augment count
+            histogram[l] = histogram[l] + 1;
+          }
+
+          //normalization of histogram + compute equalized Values and Mean
+          for (var i in histogram){
+            histogram[i] = histogram[i] / numberPixels;
+            sum += histogram[i];
+            equalizedHistogram[i] = sum;
+            mean_luminance += histogram[i]*i;
+          }
+          return [equalizedHistogram, mean_luminance];
+        }
+
+        lubisMap.on('postrender', function(event){
+          if (mean) {
+            return;
+          }
+          var canvas = document.getElementsByTagName('canvas')[0];
+          var context = canvas.getContext('2d');
+          var imageData = context.getImageData(0,0, canvas.width, canvas.height).data;
+          // to prevent that recomputed every time map rendered
+          if (!allZero(imageData) && !mean) {
+            var pixelList = getPixelList(imageData);
+            var histogramProperties = getHistogramProperties(pixelList);
+            equalizedValues = histogramProperties[0];
+            mean = histogramProperties[1];
+          }
+        });
+
+        raster.on('beforeoperations', function(event) {
+          var data = event.data;
+          data["equalizedValues"] = equalizedValues;
+          data["mean"] = mean;
+        });
+
+        function onButtonChange() {
+          if (contrastLayer.getVisible() == true){
+            contrastLayer.setVisible(false);
+            contrastButtonActivate.innerHTML = "${_('image_contrast_activate')}";
+            setContrastPermalink('false')
+          } else{
+            contrastLayer.setVisible(true);
+            contrastButtonActivate.innerHTML = "${_('image_contrast_deactivate')}";
+            setContrastPermalink('true')
+          }
+        }
+        var contrast = ${contrast};
+        if (contrast) {
+          onButtonChange();
+        }
+        function setButtonListener() {
+          contrastButtonActivate.addEventListener("click", onButtonChange);
+        }
+
+        function setContrastPermalink(state){
+          var newHref = updateQueryStringParameter(window.location.href, 'contrast', state);
+          window.history.replaceState(null, '', newHref);
+        }
       }
-    </script>
+   </script>
   </body>
 </html>

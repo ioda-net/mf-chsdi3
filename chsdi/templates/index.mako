@@ -1,3 +1,7 @@
+<%
+from platform import python_version
+version = python_version()
+%>
 <!DOCTYPE html>
 <html>
   <head>
@@ -16,6 +20,9 @@
     <title>CHSDI 3</title>
   </head>
   <body>
+      <h1>Python version: ${version}</h1>
+      <h1>Build info</h1>
+          <a href="info.json">info.json</a> <br>
       <h1 id="title">Python translations</h1>
           <a href="testi18n?lang=de">Default to de</a> <br>
           <a href="testi18n?lang=en">En to en</a> <br>
@@ -69,7 +76,6 @@
           <a href="/rest/services/ech/MapServer/ch.swisstopo.geologie-gravimetrischer_atlas_papier.metadata">Returns all the attributes of the layer ch.swisstopo.geologie-gravimetrischer_atlas_papier.metadata</a>
           <h3>Find</h3>
           <a href="rest/services/ech/MapServer/find?layer=ch.bafu.bundesinventare-bln&searchText=Lavaux&searchField=bln_name&returnGeometry=false">Find Lavaux in the field bln_name of the layer ch.bafu.bundesinventare-bln</a> <br>
-          <a href="/rest/services/ech/MapServer/find?layer=ch.are.agglomerationen_isolierte_staedte&searchText=15&searchField=flaeche_ha">Find 15 in field flaeche_ha of layer ch.are.agglomerationen_isolierte_staedte (pre-infix match)</a> <br>
           <h3>Releases Service</h3>
           <a href="rest/services/ech/MapServer/ch.swisstopo.zeitreihen/releases?geometry=548945.5,147956,549402,148103.5&geometryType=esriGeometryEnvelope&mapExtent=611399.9999999999,158650,690299.9999999999,198150&imageDisplay=500,500,96">Zeitreihen Layer</a> <br>
           <a
@@ -87,6 +93,13 @@
           <a href="rest/services/ech/MapServer/ch.bafu.bundesinventare-bln/legend">Get Legend Ex 1</a> <br>
           <a href="rest/services/ech/MapServer/ch.bafu.bundesinventare-jagdbanngebiete/legend?lang=fr&callback=cb">Get Legend Ex 2 with callback</a> <br>
           <a href='rest/services/inspire/1.0.0/WMTSCapabilities.xml'>WMTS capabilities inspire</a> <br>
+
+      <h2>New style config (in directory "configs")</h2>
+      <em>Only behind Apache!</em>
+      layersConfig<a href='configs/fr/layersConfig.json'>configs/fr/layersConfig.json</a><br />
+      Server-side translation (gettext)<a href='configs/fr/translations.json'>configs/fr/translations.json</a><br />
+      Topics catalog <a href='configs/fr/catalog.bafu.json'>configs/fr/catalog.bafu.json</a><br />
+      Services (topic list)<a href='configs/services.json'>configs/services.json</a><br />
 
       <h2>Topic Listing</h2>
           <a href='rest/services'>List all the available topics</a> <br>

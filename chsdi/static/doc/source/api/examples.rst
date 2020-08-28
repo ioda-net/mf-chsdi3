@@ -97,7 +97,11 @@ Other JS web mapping APIs integration
       cat: 2
     }, {
       label: 'More OpenLayers 3 Examples on the official website.',
-      link: 'http://openlayers.org/en/v3.6.0/examples/',
+      link: 'https://openlayers.org/en/v3.20.1/examples/',
+      cat: 2
+    }, {
+      label: 'More OpenLayers 4 Examples on the official website.',
+      link: 'https://openlayers.org/en/v4.6.5/examples/',
       cat: 2
     }, {
       label: 'Feature selection of KML and GeoJSON layers',
@@ -114,6 +118,10 @@ Other JS web mapping APIs integration
     }, {
       label: 'WMS in EPSG:3857 using Leaflet',
       codepen: 'JKAjWk',
+      cat: 5
+    }, {
+      label: 'Mapbox vectortiles example',
+      codepen: 'GvgLvj',
       cat: 5
     }];
     var tpl = '<li><a href="{link}" target="_blank">{label}</a></li>';

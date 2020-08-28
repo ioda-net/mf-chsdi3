@@ -52,7 +52,7 @@ class NationalesSportanlagenkonzept(Base, Vector):
     art_der_anlage = Column('art_der_anlage', Unicode, nullable=False)
     name_der_anlage = Column('name_der_anlage', Unicode, nullable=False)
     ort = Column('ort', Unicode, nullable=False)
-    website = Column('website', Unicode, nullable=False, default='')
+    website = Column('website', Unicode, nullable=False, default=u'')
     the_geom = Column(Geometry2D)
 
 register('ch.baspo.nationales-sportanlagenkonzept', NationalesSportanlagenkonzept)
@@ -69,6 +69,32 @@ class Territorialregionen(Base, Vector):
     the_geom = Column(Geometry2D)
 
 register('ch.vbs.territorialregionen', Territorialregionen)
+
+
+class SchiessAnzeigen(Base, Vector):
+    __tablename__ = 'v_schiessanzeigen'
+    __table_args__ = ({'autoload': False})
+    __template__ = 'templates/htmlpopup/schiessanzeigen.mako'
+    __bodId__ = 'ch.vbs.schiessanzeigen'
+    __label__ = 'bezeichnung'
+    id = Column('belplan_id', Unicode, primary_key=True)
+    bezeichnung = Column('bezeichnung', Unicode)
+    infobezeichnung = Column('infobezeichnung', Unicode)
+    infotelefonnr = Column('infotelefonnr', Unicode)
+    infoemail = Column('infoemail', Unicode)
+    url_de = Column('url_de', Unicode)
+    url_fr = Column('url_fr', Unicode)
+    url_it = Column('url_it', Unicode)
+    url_en = Column('url_en', Unicode)
+    belegungsdatum = Column('belegungsdatum', Unicode)
+    wochentag = Column('belegungsdatum_wochentag', Unicode)
+    wochentag = Column('belegungsdatum_wochentag', Unicode)
+    zeit_von = Column('zeit_von', Unicode)
+    zeit_bis = Column('zeit_bis', Unicode)
+    anmerkung = Column('anmerkung', Unicode)
+    the_geom = Column(Geometry2D)
+
+register(SchiessAnzeigen.__bodId__, SchiessAnzeigen)
 
 
 class PatrouilledesglaciersZ(Base, Vector):
@@ -129,20 +155,35 @@ class Armeelogistikcenter(Base, Vector):
 register('ch.vbs.armeelogistikcenter', Armeelogistikcenter)
 
 
-class BundestankstellenBebeco(Base, Vector):
-    __tablename__ = 'bundestankstellen_bebeco'
-    __table_args__ = ({'schema': 'militaer', 'autoload': False})
+class BundestankstellenBebeco:
+    __tablename__ = 'v_bundestankstellen_bebeco'
+    __table_args__ = ({'schema': 'militaer', 'autoload': False, 'extend_existing': True})
     __template__ = 'templates/htmlpopup/bundestankstellen.mako'
     __bodId__ = 'ch.vbs.bundestankstellen-bebeco'
     __queryable_attributes__ = ['ort', 'plz', 'strasse']
     __label__ = 'ort'
+    __returnedGeometry__ = 'the_geom_point'
     id = Column('bgdi_id', Integer, primary_key=True)
     strasse = Column('strasse', Unicode)
     plz = Column('plz', Integer)
     ort = Column('ort', Unicode)
-    the_geom = Column(Geometry2D)
+    bezugszeit = Column('bezugszeit', Unicode)
+    the_geom_point = Column('the_geom', Geometry2D)
 
-register('ch.vbs.bundestankstellen-bebeco', BundestankstellenBebeco)
+
+class BundestankstellenBebecoZoom1(Base, BundestankstellenBebeco, Vector):
+    __minscale__ = 1
+    __maxscale__ = 10000
+    the_geom = Column('the_geom_tooltip_2', Geometry2D)
+
+register(BundestankstellenBebeco.__bodId__, BundestankstellenBebecoZoom1)
+
+
+class BundestankstellenBebecoZoom2(Base, BundestankstellenBebeco, Vector):
+    __minscale__ = 10000
+    the_geom = Column('the_geom_tooltip', Geometry2D)
+
+register(BundestankstellenBebeco.__bodId__, BundestankstellenBebecoZoom2)
 
 
 class LogistikraeumeArmeelogistikcenter(Base, Vector):

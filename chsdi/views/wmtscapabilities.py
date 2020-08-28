@@ -13,7 +13,12 @@ from chsdi.lib.filters import filter_by_geodata_staging, filter_by_map_name
 def getDefaultTileMatrixSet(tileMatrixSet):
     tilematrixSet = {}
 
-    gagrid = getTileGrid(int(tileMatrixSet))()
+    tilegridClass = getTileGrid(int(tileMatrixSet))
+    if tileMatrixSet not in ['2056', '21781']:
+        useSwissExtent = False
+    else:
+        useSwissExtent = True
+    gagrid = tilegridClass(useSwissExtent=useSwissExtent)
     minZoom = 0
     maxZoom = len(gagrid.RESOLUTIONS)
     for zoom in range(minZoom, maxZoom):
@@ -52,7 +57,7 @@ class WMTSCapabilites(MapNameValidation):
             raise HTTPBadRequest('EPSG:%s not found. Must be one of %s' % (epsg, ", ".join(available_epsg_codes)))
         self.tileMatrixSet = epsg
 
-    @view_config(route_name='wmtscapabilities', http_cache=0)
+    @view_config(route_name='wmtscapabilities')
     def wmtscapabilities(self):
         from pyramid.renderers import render_to_response
         scheme = self.request.headers.get(
@@ -98,4 +103,13 @@ class WMTSCapabilites(MapNameValidation):
             wmts,
             request=self.request)
         response.content_type = 'text/xml'
+
+        # Notify caching systems that the content of the response
+        # varies depending on the protocol used (i.e. http or https)
+        # The original protocol used by the client is stored in X-Forwarded-Proto
+        # header by the ALB
+        # Note: vary header in Pyramid needs to be a list
+        # https://docs.pylonsproject.org/projects/pyramid/en/latest/api/response.html#pyramid.response.Response.vary
+        response.vary = ['X-Forwarded-Proto']
+
         return response

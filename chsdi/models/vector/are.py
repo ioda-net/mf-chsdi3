@@ -44,20 +44,21 @@ class Alpenkonvention(Base, Vector):
 register('ch.are.alpenkonvention', Alpenkonvention)
 
 
-class AggloIsoStaedte(Base, Vector):
-    __tablename__ = 'agglomerationen_isolierte_staedte'
+class Agglomerationsverkehr(Base, Vector):
+    __tablename__ = 'agglomerationsverkehr'
     __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False})
-    __template__ = 'templates/htmlpopup/aggloisostaedte.mako'
-    __bodId__ = 'ch.are.agglomerationen_isolierte_staedte'
+    __template__ = 'templates/htmlpopup/agglomerationsverkehr.mako'
+    __bodId__ = 'ch.are.agglomerationsverkehr'
     __label__ = 'name'
-    id = Column('row_id', Integer, primary_key=True)
+    id = Column('id', Integer, primary_key=True)
     name = Column('name', Unicode)
-    klasse_de = Column('klasse_de', Unicode)
-    klasse_fr = Column('klasse_fr', Unicode)
-    flaeche_ha = Column('flaeche_ha', Float)
+    gem_no = Column('gem_no', Integer)
+    agglo_no = Column('agglo_no', Integer)
+    agglo_name = Column('agglo_name', Unicode)
+    land = Column('land', Unicode)
     the_geom = Column(Geometry2D)
 
-register('ch.are.agglomerationen_isolierte_staedte', AggloIsoStaedte)
+register('ch.are.agglomerationsverkehr', Agglomerationsverkehr)
 
 
 class GueteklasseOev(Base, Vector):
@@ -72,34 +73,6 @@ class GueteklasseOev(Base, Vector):
     the_geom = Column(Geometry2D)
 
 register('ch.are.gueteklassen_oev', GueteklasseOev)
-
-
-class Bevoelkerungsdichte(Base, Vector):
-    __tablename__ = 'bevoelkerungsdichte'
-    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False})
-    __template__ = 'templates/htmlpopup/bevoelkerungsdichte.mako'
-    __bodId__ = 'ch.are.bevoelkerungsdichte'
-    __label__ = 'popt_ha'  # Composite labels
-    id = Column('row_id', Integer, primary_key=True)
-    popt_ha = Column('popt_ha', Float)
-    stand = Column('stand', Float)
-    the_geom = Column(Geometry2D)
-
-register('ch.are.bevoelkerungsdichte', Bevoelkerungsdichte)
-
-
-class Beschaeftigtendichte(Base, Vector):
-    __tablename__ = 'beschaeftigtendichte'
-    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False})
-    __template__ = 'templates/htmlpopup/beschaeftigtendichte.mako'
-    __bodId__ = 'ch.are.beschaeftigtendichte'
-    __label__ = 'empt_ha'
-    id = Column('row_id', Integer, primary_key=True)
-    empt_ha = Column('empt_ha', Float)
-    stand = Column('stand', Float)
-    the_geom = Column(Geometry2D)
-
-register('ch.are.beschaeftigtendichte', Beschaeftigtendichte)
 
 
 class Bauzonen(Base, Vector):
@@ -183,23 +156,147 @@ register(WindenergieBundesinteressen.__bodId__, WindenergieBundesinteressen)
 
 
 class ZweitwohnungsAnteil(Base, Vector):
-    __tablename__ = 'wohnungsinventar_zweitwohnungsanteil'
+    __tablename__ = 'zweitwohnungsanteil'
     __table_args__ = ({'schema': 'raumplanung', 'autoload': False})
     __template__ = 'templates/htmlpopup/zweitwohnungsanteil.mako'
     __bodId__ = 'ch.are.wohnungsinventar-zweitwohnungsanteil'
     __label__ = 'id'
-    id = Column('objectid', Integer, primary_key=True)
+    id = Column('bgdi_id', Integer, primary_key=True)
     gemeinde_name = Column('gemeinde_name', Unicode)
+    gemeinde_nummer = Column('gemeinde_nummer', Integer)
+    status = Column('status', Integer)
+    verfahren = Column('verfahren', Integer)
     zwg_3150 = Column('zwg_3150', Integer)
     zwg_3010 = Column('zwg_3010', Integer)
     zwg_3100 = Column('zwg_3100', Integer)
     zwg_3110 = Column('zwg_3110', Float)
     zwg_3120 = Column('zwg_3120', Float)
-    zwg_3200_de = Column('zwg_3200_de', Unicode)
-    zwg_3200_fr = Column('zwg_3200_fr', Unicode)
-    zwg_3200_it = Column('zwg_3200_it', Unicode)
-    zwg_3200_rm = Column('zwg_3200_rm', Unicode)
-    zwg_3200_en = Column('zwg_3200_en', Unicode)
     the_geom = Column(Geometry2D)
 
 register('ch.are.wohnungsinventar-zweitwohnungsanteil', ZweitwohnungsAnteil)
+
+
+class ReisezeitAgglomerationen:
+    __tablename__ = 'reisezeit_agglomerationen'
+    id = Column('verkehrszone_id', Integer, primary_key=True)
+    the_geom = Column(Geometry2D)
+
+
+class Reisezeit:
+    __tablename__ = 'reisezeit'
+    id = Column('verkehrszone_id', Integer, primary_key=True)
+    the_geom = Column(Geometry2D)
+
+
+class Erreichbarkeit:
+    __tablename__ = 'erreichbarkeit'
+    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False, 'extend_existing': True})
+    __label__ = 'id'
+    id = Column('verkehrszone_id', Integer, primary_key=True)
+    the_geom = Column(Geometry2D)
+
+
+class ReisezeitAgglomerationenOev(Base, ReisezeitAgglomerationen, Vector):
+    __bodId__ = 'ch.are.reisezeit-agglomerationen-oev'
+    __template__ = 'templates/htmlpopup/reisezeit_agglomerationen_oev.mako'
+    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False, 'extend_existing': True})
+    oev_reisezeit_agglo = Column('oev_reisezeit_agglo', Integer)
+    oev_no_agglo = Column('oev_no_agglo', Integer)
+
+register('ch.are.reisezeit-agglomerationen-oev', ReisezeitAgglomerationenOev)
+
+
+class ReisezeitAgglomerationenMiv(Base, ReisezeitAgglomerationen, Vector):
+    __bodId__ = 'ch.are.reisezeit-agglomerationen-miv'
+    __template__ = 'templates/htmlpopup/reisezeit_agglomerationen_miv.mako'
+    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False, 'extend_existing': True})
+    strasse_reisezeit_agglo = Column('strasse_reisezeit_agglo', Integer)
+    strasse_no_agglo = Column('strasse_no_agglo', Integer)
+
+register('ch.are.reisezeit-agglomerationen-miv', ReisezeitAgglomerationenMiv)
+
+
+class ReisezeitOev(Base, Reisezeit, Vector):
+    __bodId__ = 'ch.are.reisezeit-oev'
+    __template__ = 'templates/htmlpopup/reisezeit_oev.mako'
+    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False, 'extend_existing': True})
+    oev_reisezeit_z = Column('oev_reisezeit_z', Integer)
+    oev_no_z = Column('oev_no_z', Integer)
+
+register('ch.are.reisezeit-oev', ReisezeitOev)
+
+
+class ReisezeitMiv(Base, Reisezeit, Vector):
+    __bodId__ = 'ch.are.reisezeit-miv'
+    __template__ = 'templates/htmlpopup/reisezeit_miv.mako'
+    __table_args__ = ({'schema': 'siedlung_landschaft', 'autoload': False, 'extend_existing': True})
+    strasse_reisezeit_z = Column('strasse_reisezeit_z', Integer)
+    strasse_no_z = Column('strasse_no_z', Integer)
+
+register('ch.are.reisezeit-miv', ReisezeitMiv)
+
+
+class ErreichbarkeitOev(Base, Erreichbarkeit, Vector):
+    __bodId__ = 'ch.are.erreichbarkeit-oev'
+    __template__ = 'templates/htmlpopup/erreichbarkeit_oev.mako'
+    oev_erreichb_ewap = Column('oev_erreichb_ewap', Integer)
+
+register('ch.are.erreichbarkeit-oev', ErreichbarkeitOev)
+
+
+class ErreichbarkeitMiv(Base, Erreichbarkeit, Vector):
+    __bodId__ = 'ch.are.erreichbarkeit-miv'
+    __template__ = 'templates/htmlpopup/erreichbarkeit_miv.mako'
+    strasse_erreichb_ewap = Column('strasse_erreichb_ewap', Integer)
+
+register('ch.are.erreichbarkeit-miv', ErreichbarkeitMiv)
+
+
+class BelastungPersonenverkehrStrasse(Base, Vector):
+    __tablename__ = 'belastung_personenverkehr'
+    __table_args__ = ({'schema': 'strassen', 'autoload': False})
+    __template__ = 'templates/htmlpopup/personenverkehr_strasse.mako'
+    __bodId__ = 'ch.are.belastung-personenverkehr-strasse'
+    __label__ = 'nr'
+    __extended_info__ = True
+    id = Column('bgdi_id', Integer, primary_key=True)
+    nr = Column('nr', Integer)
+    dwv_fzg = Column('dwv_fzg', Integer)
+    dwv_pw = Column('dwv_pw', Integer)
+    dwv_li = Column('dwv_li', Integer)
+    dwv_lw = Column('dwv_lw', Integer)
+    dwv_lz = Column('dwv_lz', Integer)
+    dtv_fzg = Column('dtv_fzg', Integer)
+    dtv_pw = Column('dtv_pw', Integer)
+    dtv_li = Column('dtv_li', Integer)
+    dtv_lw = Column('dtv_lw', Integer)
+    dtv_lz = Column('dtv_lz', Integer)
+    msp_fzg = Column('msp_fzg', Integer)
+    msp_pw = Column('msp_pw', Integer)
+    msp_li = Column('msp_li', Integer)
+    msp_lw = Column('msp_lw', Integer)
+    msp_lz = Column('msp_lz', Integer)
+    asp_fzg = Column('asp_fzg', Integer)
+    asp_pw = Column('asp_pw', Integer)
+    asp_li = Column('asp_li', Integer)
+    asp_lw = Column('asp_lw', Integer)
+    asp_lz = Column('asp_lz', Integer)
+    the_geom = Column(Geometry2D)
+register(BelastungPersonenverkehrStrasse.__bodId__, BelastungPersonenverkehrStrasse)
+
+
+class BelastungPersonenverkehrBahn(Base, Vector):
+    __tablename__ = 'belastung_personenverkehr'
+    __table_args__ = ({'schema': 'oeffentlicher_verkehr', 'autoload': False})
+    __template__ = 'templates/htmlpopup/personenverkehr_bahn.mako'
+    __bodId__ = 'ch.are.belastung-personenverkehr-bahn'
+    __label__ = 'nr'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    nr = Column('nr', Integer)
+    dwv_oev = Column('dwv_oev', Integer)
+    dtv_oev = Column('dtv_oev', Integer)
+    msp_oev = Column('msp_oev', Integer)
+    asp_oev = Column('asp_oev', Integer)
+    the_geom = Column(Geometry2D)
+
+register(BelastungPersonenverkehrBahn.__bodId__, BelastungPersonenverkehrBahn)

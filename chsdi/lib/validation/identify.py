@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 
-
+import json
 import esrijson
+import six
+from shapely.geometry.linestring import LineString
+from shapely.geometry.polygon import Polygon
 from pyramid.httpexceptions import HTTPBadRequest
 
 from chsdi.lib.helpers import float_raise_nan
 from chsdi.lib.validation import BaseFeaturesValidation
+
+if six.PY3:
+    unicode = str
 
 
 class IdentifyServiceValidation(BaseFeaturesValidation):
@@ -15,15 +21,16 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
         self._where = None
         self._geometry = None
         self._geometryType = None
+        self._tolerance = None
         self._imageDisplay = None
         self._mapExtent = None
         self._returnGeometry = None
-        self._tolerance = None
         self._timeInstant = None
         self._layers = None
         self._offset = None
         self._limit = None
         self._order = None
+        self._layerDefs = None
 
         self.esriGeometryTypes = (
             u'esriGeometryPoint',
@@ -31,14 +38,22 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
             u'esriGeometryPolygon',
             u'esriGeometryEnvelope'
         )
+        if request.params.get('where') is not None and request.params.get('layerDefs'):
+            raise HTTPBadRequest("Parameters 'layerDefs' and 'where' are mutually exclusive")
         self.where = request.params.get('where')
         self.geometryType = request.params.get('geometryType')
         self.geometry = request.params.get('geometry')
-        self.imageDisplay = request.params.get('imageDisplay')
-        self.mapExtent = request.params.get('mapExtent')
-        self.returnGeometry = request.params.get('returnGeometry')
         if service != 'releases':
             self.tolerance = request.params.get('tolerance')
+        if self.tolerance == 0:
+            DEFAULT_MAPEXTENT = '0,0,0,0'
+            DEFAULT_IMAGEDISPLAY = '0,0,0'
+        else:
+            DEFAULT_MAPEXTENT = None
+            DEFAULT_IMAGEDISPLAY = None
+        self.imageDisplay = request.params.get('imageDisplay', DEFAULT_IMAGEDISPLAY)
+        self.mapExtent = request.params.get('mapExtent', DEFAULT_MAPEXTENT)
+        self.returnGeometry = request.params.get('returnGeometry')
         if service == 'releases':
             self.layerId = request.matchdict.get('layerId')
         self.layers = request.params.get('layers', 'all')
@@ -46,6 +61,7 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
         self.offset = request.params.get('offset')
         self.limit = request.params.get('limit')
         self.order = request.params.get('order')
+        self.layerDefs = request.params.get('layerDefs')
 
     @property
     def where(self):
@@ -73,6 +89,9 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
 
     @property
     def tolerance(self):
+        if not hasattr(self, '_tolerance'):
+            self._tolerance = None
+
         return self._tolerance
 
     @property
@@ -95,6 +114,24 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
     def order(self):
         return self._order
 
+    @property
+    def layerDefs(self):
+        return self._layerDefs
+
+    @layerDefs.setter
+    def layerDefs(self, value):
+        if value is not None:
+            try:
+                defs = json.loads(value)
+                if self.layers != 'all':
+                    if not (set(defs.keys()).issubset(set(self.layers))):
+                        raise HTTPBadRequest("You can only filter on layer '%s' in 'layerDefs'" % self.layers)
+                where = "+and+".join(defs.values())
+                self._layerDefs = defs
+                self.where = where
+            except ValueError:
+                raise HTTPBadRequest("Cannot parse 'layerDefs' %s" % value)
+
     @where.setter
     def where(self, value):
         # TODO regexp to test validity of sql clause
@@ -103,9 +140,9 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
 
     @geometryType.setter
     def geometryType(self, value):
-        if value is None and self._where is not None:
+        if value is None and (self._where is not None or self._layerDefs is not None):
             return
-        elif value is None and self._where is None:
+        elif value is None and self._where is None and self._layerDefs is None:
             raise HTTPBadRequest('Please provide the parameter geometryType  (Required)')
         if value not in self.esriGeometryTypes:
             raise HTTPBadRequest('Please provide a valid geometry type')
@@ -113,21 +150,27 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
 
     @geometry.setter
     def geometry(self, value):
-        if value is None and self._where is not None:
+        if value is None and (self._where is not None or self._layerDefs is not None):
             return
-        elif value is None and self._where is None:
+        elif value is None and self._where is None and self._layerDefs is None:
             raise HTTPBadRequest('Please provide the parameter geometry  (Required)')
         else:
             try:
                 if self._geometryType == 'esriGeometryEnvelope':
                     self._geometry = esrijson.to_shape([float_raise_nan(c) for c in value.split(',')])
-                elif self._geometryType == 'esriGeometryPoint':
+                elif self._geometryType == 'esriGeometryPoint' \
+                        and 'x' not in value and 'y' not in value:
+                    # Simple simplified point geometry
                     value = [float_raise_nan(c) for c in value.split(',')]
                     self._geometry = esrijson.to_shape({'x': value[0], 'y': value[1]})
                 else:
                     self._geometry = esrijson.to_shape(esrijson.loads(value))
-            except:
+
+            except Exception:
                 raise HTTPBadRequest('Please provide a valid geometry')
+        if (self._geometryType == u'esriGeometryPolyline' and not isinstance(self._geometry, LineString)) \
+                or (self._geometryType == u'esriGeometryPolygon' and not isinstance(self._geometry, Polygon)):
+            raise HTTPBadRequest(u"Missmatch between 'geometryType': {} and provided 'geometry' parsed as '{}'".format(self._geometryType, self._geometry.__class__.__name__))
 
     @imageDisplay.setter
     def imageDisplay(self, value):
@@ -141,9 +184,12 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
                 'Please provide the parameter imageDisplay in a comma separated list of 3 arguments '
                 '(width,height,dpi)')
         try:
-            self._imageDisplay = map(float_raise_nan, value)
+            self._imageDisplay = list(map(float_raise_nan, value))
         except ValueError:
             raise HTTPBadRequest('Please provide numerical values for the parameter imageDisplay')
+        # Python3 None > 0 --> TypeError
+        if self.tolerance is not None and self.tolerance > 0 and not all(i > 0 for i in self._imageDisplay):
+            raise HTTPBadRequest('All values for parameter "imageDisplay" must be strictly positive if tolerance>0')
 
     @mapExtent.setter
     def mapExtent(self, value):
@@ -154,7 +200,7 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
         else:
             try:
                 self._mapExtent = esrijson.to_shape([float_raise_nan(c) for c in value.split(',')])
-            except:
+            except Exception:
                 raise HTTPBadRequest('Please provide numerical values for the parameter mapExtent')
 
     @returnGeometry.setter
@@ -223,7 +269,7 @@ class IdentifyServiceValidation(BaseFeaturesValidation):
             try:
                 layers = value.split(':')[1]
                 self._layers = layers.split(',')
-            except:
+            except Exception:
                 HTTPBadRequest('There is an error in the parameter layers')
 
     @offset.setter

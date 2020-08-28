@@ -5,19 +5,74 @@ import math
 import requests
 import datetime
 import gzip
-import StringIO
+import six
+import unidecode
+from decimal import Decimal
+from past.utils import old_div
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO, BytesIO
+
+from six.moves import zip, reduce, zip_longest
+from itertools import chain
+
+from functools import partial
 from pyramid.threadlocal import get_current_registry
 from pyramid.i18n import get_locale_name
 from pyramid.url import route_url
 from pyramid.httpexceptions import HTTPBadRequest, HTTPRequestTimeout
 import unicodedata
-from urllib import quote
-from urlparse import urlparse, urlunparse, urljoin
+try:
+    from urlparse import urlparse, urlunparse, urljoin
+except ImportError:
+    from urllib.parse import urlparse, urlunparse, urljoin
+
+try:
+    from urllib import quote
+except ImportError:
+    from urllib.parse import quote
+
 import xml.etree.ElementTree as etree
-from pyproj import Proj, transform
+from pyproj import Proj, transform as proj_transform
 from requests.exceptions import ConnectionError
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from shapely.ops import transform as shape_transform
+from shapely.wkt import dumps as shape_dumps, loads as shape_loads
+from shapely.geometry.base import BaseGeometry
+from chsdi.lib.parser import WhereParser
+from chsdi.lib.exceptions import QueryParseException, CoordinatesTransformationException
+import logging
+
+if six.PY3:
+    unicode = str
+    long = int
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+log = logging.getLogger(__name__)
+
+
+PROJECTIONS = {}
+
+# Rounding to abount 0.1 meters
+COORDINATES_DECIMALS_FOR_METRIC_PROJ = 1
+COORDINATES_DECIMALS_FOR_DEGREE_PROJ = 6
+
+
+def to_utf8(data):
+    try:
+        data = data.decode('utf8')
+    except (UnicodeDecodeError, AttributeError):
+        pass
+    return data
+
+# Number of element in an iterator
+
+
+def ilen(iterable):
+    return reduce(lambda sum, element: sum + 1, iterable, 0)
 
 
 def versioned(path):
@@ -91,7 +146,7 @@ def sanitize_url(url):
     sanitized = url
     try:
         sanitized = urljoin(url, urlparse(url).path.replace('//', '/'))
-    except:
+    except Exception:
         pass
     return sanitized
 
@@ -132,7 +187,10 @@ def format_search_text(input_str):
 def format_locations_search_text(input_str):
     if input_str is None:
         return input_str
-    input_str = input_str.replace('.', '')
+    # only remove trailing and leading dots
+    input_str = ' '.join([w.strip('.') for w in input_str.split()])
+    # remove double quotation marks
+    input_str = input_str.replace('"', '')
     return format_search_text(input_str)
 
 
@@ -170,14 +228,16 @@ def escape_sphinx_syntax(input_str):
     return input_str
 
 
-def format_query(model, value):
+def format_query(model, value, lang):
     '''
         Supported operators on numerical or date values are "=, !=, >=, <=, > and <"
         Supported operators for text are "ilike and not ilike"
     '''
+    where = None
+
     def escapeSQL(value):
         if u'ilike' in value:
-            match = re.search(r'([\w]+\s)(ilike|not ilike)(\s\'%)(.*)(%\')', value)
+            match = re.search(r'([\w]+\s)(ilike|not ilike)(\s\'%)([\s\S]*)(%\')', value)
             where = u''.join((
                 match.group(1).replace(u'\'', u'E\''),
                 match.group(2),
@@ -190,42 +250,66 @@ def format_query(model, value):
             return where
         return value
 
-    def replacePropByColumnName(model, values):
+    def get_queryable_attributes(model, lang):
+        attributes = []
+        if hasattr(model, '__queryable_attributes__'):
+            attributes = model.get_queryable_attributes_keys(lang)
+        return attributes
+
+    # Check if attributes are queryable and replace by the DB column name
+    def replacePropByColumnName(model, values, lang):
         res = []
+        queryable_attributes = get_queryable_attributes(model, lang)
         for val in values:
-            prop = val.split(' ')[0]
-            columnName = model.get_column_by_property_name(prop).name.__str__()
-            val = val.replace(prop, columnName)
+            prop = val.split(' ')[0].strip()
+            column = model.get_column_by_property_name(prop)
+            if prop not in queryable_attributes:
+                error_msg = "Query attribute '{}' is not queryable. Queryable attributes are '{}'" \
+                    .format(prop, ",".join(queryable_attributes))
+                log.error(error_msg)
+                raise QueryParseException(error_msg)
+            if column is None:
+                error_msg = "Query attribute '{} doesn't exist in the model".format(prop)
+                log.error(error_msg)
+                raise QueryParseException(error_msg)
+
+            val = val.replace(prop, unicode(column.name))
             res.append(val)
         return res
 
-    def extractMatches(x):
-        for v in x:
-            if v != '':
-                return v
-        return v
+    def merge_statements(statements, operators):
+        ''' Given values=["toto >1', "'tutu' like 'tata%'"] and operators=["AND" ]
+            return "toto >1' AND 'tutu' like 'tata%'"
+        '''
+        if len(statements) - 1 != ilen(operators):
+            raise Exception
 
-    def getOperator(values):
-        supportedOperators = [' and ', ' or ']
-        if len(values) > 1:
-            t = value.split(values[0])
-            operator = extractMatches(t[1].split(values[1]))
-            if operator not in supportedOperators:
-                raise HTTPBadRequest()
-            return operator
-        return ''
+        # iters = [iter(statements), iter(operators)]
+        # full = list(it.next() for it in cycle(iters))
 
-    regEx = r'(\w+\s(?:ilike|not ilike)\s(?:\'%)[^\%]+(?:%\'))|(\w+\s(?:=|\!=|>=|<=|>|<)\s[^\s]+)|(\w+\s(?:is null|is not null))'
+        full = [x for x in chain.from_iterable(zip_longest(statements, operators))
+            if x is not None]
+
+        return unicode(" ".join(full))
 
     try:
-        values = map(extractMatches, re.findall(regEx, value))
-        if len(values) == 0:
+        w = WhereParser(value)
+        tokens = list(w.tokens)
+        if ilen(tokens) == 0:
             return None
-        operator = getOperator(values)
-        values = map(escapeSQL, values)
-        values = replacePropByColumnName(model, values)
-        where = operator.join(values)
-    except:
+        # TODO: what does really do?
+        # values = map(escapeSQL, values)
+        values = replacePropByColumnName(model, tokens, lang)
+        operators = list(w.operators)
+
+        where = merge_statements(values, operators)
+
+    except QueryParseException as qpe:
+        raise HTTPBadRequest("Failed to parse where/layersDef: {}".format(qpe))
+    except HTTPBadRequest:
+        raise Exception
+    except Exception as e:
+        log.error("Unkown error while parsing where/layerDefs: {}".format(e))
         return None
     return where
 
@@ -288,13 +372,101 @@ def imagesize_from_metafile(tileUrlBasePath, bvnummer):
     return (width, height)
 
 
-def transform_coordinate(coords, srid_from, srid_to):
-    srid_in = Proj(init='epsg:%s' % srid_from)
-    srid_out = Proj(init='epsg:%s' % srid_to)
-    return transform(srid_in, srid_out, coords[0], coords[1])
+def get_proj_from_srid(srid):
+    if srid in PROJECTIONS:
+        return PROJECTIONS[srid]
+    else:
+        proj = Proj(init='EPSG:{}'.format(srid))
+        PROJECTIONS[srid] = proj
+        return proj
 
+
+def get_precision_for_proj(srid):
+    precision = COORDINATES_DECIMALS_FOR_METRIC_PROJ
+    proj = get_proj_from_srid(srid)
+    if proj.is_latlong():
+        precision = COORDINATES_DECIMALS_FOR_DEGREE_PROJ
+    return precision
+
+
+def _round_bbox_coordinates(bbox, precision=None):
+    tpl = '%.{}f'.format(precision)
+    if precision is not None:
+        return [float(Decimal(tpl % c)) for c in bbox]
+    else:
+        return bbox
+
+
+def _round_shape_coordinates(shape, precision=None):
+    if precision is None:
+        return shape
+    else:
+        return shape_loads(
+            shape_dumps(shape, rounding_precision=precision)
+        )
+
+
+def round_geometry_coordinates(geom, precision=None):
+    if isinstance(geom, (list, tuple, )):
+        return _round_bbox_coordinates(geom, precision=precision)
+    elif isinstance(geom, BaseGeometry):
+        return _round_shape_coordinates(geom, precision=precision)
+    else:
+        return geom
+
+
+def _transform_point(coords, srid_from, srid_to):
+    proj_in = get_proj_from_srid(srid_from)
+    proj_out = get_proj_from_srid(srid_to)
+    return proj_transform(proj_in, proj_out, coords[0], coords[1])
+
+
+def transform_round_geometry(geom, srid_from, srid_to, rounding=True):
+    if (srid_from == srid_to):
+        if rounding:
+            precision = get_precision_for_proj(srid_to)
+            return round_geometry_coordinates(geom, precision=precision)
+        return geom
+    if isinstance(geom, (list, tuple, )):
+        return _transform_coordinates(geom, srid_from, srid_to, rounding=rounding)
+    else:
+        return _transform_shape(geom, srid_from, srid_to, rounding=rounding)
+
+
+# Reprojecting pairs of coordinates and rounding them if necessary
+# Only a point or a line are considered
+def _transform_coordinates(coordinates, srid_from, srid_to, rounding=True):
+    if len(coordinates) % 2 != 0:
+        raise ValueError
+    new_coords = []
+    coords_iter = iter(coordinates)
+    try:
+        for pnt in zip(coords_iter, coords_iter):
+            new_pnt = _transform_point(pnt, srid_from, srid_to)
+            new_coords += new_pnt
+        if rounding:
+            precision = get_precision_for_proj(srid_to)
+            new_coords = _round_bbox_coordinates(new_coords, precision=precision)
+    except Exception:
+        raise CoordinatesTransformationException("Cannot transform coordinates {} from {} to {}".format(coordinates, srid_from, srid_to))
+    return new_coords
+
+
+def _transform_shape(geom, srid_from, srid_to, rounding=True):
+    proj_in = get_proj_from_srid(srid_from)
+    proj_out = get_proj_from_srid(srid_to)
+
+    projection_func = partial(proj_transform, proj_in, proj_out)
+
+    new_geom = shape_transform(projection_func, geom)
+    if rounding:
+        precision = get_precision_for_proj(srid_to)
+        return _round_shape_coordinates(new_geom, precision=precision)
+    return new_geom
 
 # float('NaN') does not raise an Exception. This function does.
+
+
 def float_raise_nan(val):
     ret = float(val)
     if math.isnan(ret):
@@ -304,22 +476,29 @@ def float_raise_nan(val):
 
 def parse_box2d(stringBox2D):
     extent = stringBox2D.replace('BOX(', '').replace(')', '').replace(',', ' ')
-    return map(float, extent.split(' '))
+    # Python2/3
+    box = map(float, extent.split(' '))
+    if not isinstance(box, list):
+        box = list(box)
+    return box
 
 
 def is_box2d(box2D):
+    # Python2/3
+    if not isinstance(box2D, list):
+        box2D = list(box2D)
     # Bottom left to top right only
     if len(box2D) != 4 or box2D[0] > box2D[2] or box2D[1] > box2D[3]:
         raise ValueError('Invalid box2D.')
-    return True
+    return box2D
 
 
 def center_from_box2d(box2D):
-    if is_box2d(box2D):
-        return [
-            box2D[0] + ((box2D[2] - box2D[0]) / 2),
-            box2D[1] + ((box2D[3] - box2D[1]) / 2)
-        ]
+    box2D = is_box2d(box2D)
+    return [
+        box2D[0] + ((box2D[2] - box2D[0]) / 2),
+        box2D[1] + ((box2D[3] - box2D[1]) / 2)
+    ]
 
 
 def shift_to(coords, srid):
@@ -343,7 +522,7 @@ def parse_date_string(dateStr, format_input='%Y-%m-%d', format_output='%d.%m.%Y'
         return datetime.datetime.strptime(
             dateStr.strip(), format_input
         ).strftime(format_output)
-    except:
+    except Exception:
         return '-'
 
 
@@ -367,10 +546,15 @@ def parse_date_datenstand(dateDatenstand):
 
 
 def format_scale(scale):
+    """Format the scale denominator inserting the thousand separator (')
+
+       Example:  50000  gives 1:50'000
+    """
     scale_str = str(scale)
     n = ''
     while len(scale_str) > 3:
-        scale_prov = int(scale_str) / 1000
+        # Python2/3
+        scale_prov = old_div(int(float(scale_str)), 1000)
         n = n + "'000"
         scale_str = str(scale_prov)
     scale = "1:" + scale_str + n
@@ -393,6 +577,79 @@ def get_loaderjs_url(request, version='3.6.0'):
     return make_agnostic(route_url('ga_api', request)) + '?version=' + version
 
 
-def decompress_gzipped_string(string):
-    content = gzip.GzipFile(fileobj=StringIO.StringIO(string))
-    return content.read()
+def gzip_string(string):
+    # Python2/3
+    if six.PY2:
+        infile = StringIO()
+        data = string
+    else:
+        infile = BytesIO()
+        try:
+            data = string.encode('utf8')
+        except (UnicodeDecodeError, AttributeError):
+            data = string
+    try:
+        gzip_file = gzip.GzipFile(fileobj=infile, mode='w', compresslevel=5)
+        gzip_file.write(data)
+        gzip_file.close()
+        infile.seek(0)
+        out = infile.getvalue()
+    except Exception as e:
+        log.error("Cannot gzip string: {}".format(e))
+        out = None
+    finally:
+        infile.close()
+    return out
+
+
+def decompress_gzipped_string(streaming_body):
+    if six.PY2:
+        string_file = StringIO(streaming_body.read())
+        gzip_file = gzip.GzipFile(fileobj=string_file, mode='r', compresslevel=5)
+        return gzip_file.read().decode('utf-8')
+    else:
+        return gzip.decompress(streaming_body.read()).decode()
+
+
+def unnacent_where_text(where_string, model):
+
+    # where_string is the arbitrary where text given by the query
+    # model is the model corresponding to the layer for the query
+    separator = None
+    for possible_separator in ('+=', '=', 'ilike', 'like'):
+        # Those are the only string separators that ask for custom inputs from the customer.
+        if separator is None:
+            # We are not looking for a valid separator if we already found one
+            separator = possible_separator if where_string.find(possible_separator) > -1 else None
+            if separator is not None:
+                # splitting the string and trimming the substrings
+                where_text_split = where_string.split(separator, 1)
+                where_text_split[0] = where_text_split[0].strip()
+                # TODO: we might have multiple statements here, with 'or' or 'and'
+                where_text_split[1] = where_text_split[1].strip()
+                if str(getattr(model, where_text_split[0]).type) == 'VARCHAR':
+                    # if we get to this place, it means we have a string type of data with a custom input from the
+                    # customer and we will need to unaccent them to make the search.
+                    return "unaccent({}) {} {}".format(where_text_split[0], separator, sanitize_user_input_accents(separate_statements(where_text_split[1], model)))
+                else:
+                    # if we get here, it means we had a separator, but it's not a string (only possibility should be '='
+                    # and a number. So we break out of the for loop for performances purpose
+                    break
+
+    return where_string
+
+
+def separate_statements(substring, model):
+    # in layerdefs, sometimes statements are separated by 'or' or 'and' clauses. this separates them. Only downside is that I'm calling sanitize input accents multiple times.
+    splitted_substring = substring.split(" ", 2)
+    if len(splitted_substring) == 3:
+        separator = splitted_substring[1]
+        if separator == 'or' or separator == 'and':
+            splitted_substring[2] = unnacent_where_text(splitted_substring[2], model)
+            return "{} {} {}".format(splitted_substring[0], separator, separate_statements(splitted_substring[2], model))
+    return substring
+
+
+def sanitize_user_input_accents(string):
+    # this transforms the umlauts in latin compliant version, then remove the accents entirely
+    return unidecode.unidecode(remove_accents(string))

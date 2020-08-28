@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <%
+  from chsdi.lib.helpers import to_utf8
   layers = pageargs['layers']
   metadata = pageargs['metadata']
   themes = pageargs['themes']
@@ -59,7 +60,7 @@
                 <ows:Title>${layer.kurzbezeichnung or '-'|n,x,trim}</ows:Title>
                 <ows:Identifier>${layer.id or '-'|n,x,trim}</ows:Identifier>
                 ## TODO relative path
-                <% legendName = "/var/www/vhosts/mf-chsdi3/private/chsdi/chsdi/static/images/legends/" + layer.id + "_" + request.lang + ".png" %>
+                <% legendName = "/var/www/vhosts/mf-chsdi3/private/chsdi/chsdi/static/images/legends/" + to_utf8(layer.id) + "_" + to_utf8(request.lang) + ".png" %>
                 <%! import os.path %>
                 <% hasLegend = os.path.isfile(legendName) %>
                 % if hasLegend:
@@ -141,5 +142,5 @@
     </Theme>
     % endif
   </Themes>
-    <ServiceMetadataURL xlink:href="http://www.opengis.uab.es/SITiled/world/1.0.0/WMTSCapabilities.xml"/>
+    <ServiceMetadataURL xlink:href="${onlineressource}1.0.0/WMTSCapabilities.xml"/>
 </Capabilities>

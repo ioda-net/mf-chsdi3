@@ -13,12 +13,12 @@
                  'ch.swisstopo.geologie-hydrogeologische_karte-grundwasservulnerabilitaet',
                  'ch.swisstopo.geologie-tektonische_karte',
                  'ch.astra.ivs-gelaendekarte',
-                 'ch.astra.ausnahmetransportrouten',
                  'ch.bazl.luftfahrtkarten-icao',
                  'ch.bazl.segelflugkarte',
                  'ch.kantone.cadastralwebmap-farbe',
                  'ch.swisstopo.swisstlm3d-karte-farbe',
                  'ch.swisstopo.swisstlm3d-karte-grau',
+                 'ch.swisstopo.pixelkarte-farbe-winter',
                  'ch.swisstopo.pixelkarte-farbe-pk1000.noscale',
                  'ch.swisstopo.pixelkarte-farbe-pk500.noscale',
                  'ch.swisstopo.pixelkarte-farbe-pk200.noscale',
@@ -31,6 +31,7 @@
                  'ch.vbs.grunddispositiv-zeus',
                  'ch.swisstopo-karto.skitouren',
                  'ch.swisstopo-karto.schneeschuhrouten',
+                 'ch.swisstopo.schneeschuhwandern',
                  'ch.swisstopo.swisstlm3d-strassen',
                  'ch.swisstopo.swisstlm3d-uebrigerverkehr',
                  'ch.swisstopo.swisstlm3d-gewaessernetz',
@@ -80,13 +81,13 @@
     <tr><td>${_('Metadaten')}</td>
 % if 'idGeoCat' in c:
   % if lang in ('de', 'rm'):
-      <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/ger/catalog.search#/metadata/${c['idGeoCat']}">
+      <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/ger/md.viewer#/full_view/${c['idGeoCat']}/tab/complete">
   % elif lang == 'fr':
-      <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/fre/catalog.search#/metadata/${c['idGeoCat']}">
+      <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/fre/md.viewer#/full_view/${c['idGeoCat']}/tab/complete">
   % elif lang == 'it':
-    <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/ita/catalog.search#/metadata/${c['idGeoCat']}">
+    <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/ita/md.viewer#/full_view/${c['idGeoCat']}/tab/complete">
   % else:
-      <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/eng/catalog.search#/metadata/${c['idGeoCat']}">
+      <td><a target="_blank" href="https://www.geocat.ch/geonetwork/srv/eng/md.viewer#/full_view/${c['idGeoCat']}/tab/complete">
   % endif
       ${_('layer_geocat_text')}</a></td>
 % else:

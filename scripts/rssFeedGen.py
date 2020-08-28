@@ -1,3 +1,4 @@
+import six
 from bs4 import BeautifulSoup
 from datetime import datetime
 import time
@@ -8,6 +9,8 @@ import pytz
 from lxml import etree
 from lxml.etree import Element, SubElement, QName, tostring
 
+
+RSS_FILE = 'chsdi/static/doc/build/releasenotes/rss2.xml'
 
 class NoOutput:
 
@@ -32,7 +35,8 @@ class MyRSS2(PyRSS2Gen.RSSItem):
         PyRSS2Gen.RSSItem.publish(self, handler)
 
     def publish_extensions(self, handler):
-        handler._write(u'<%s><![CDATA[%s]]></%s>' % ('description', self.do_not_autooutput_description, 'description'))
+        tmpl = six.text_type('<%s><![CDATA[%s]]></%s>')
+        handler._write(tmpl % ('description', self.do_not_autooutput_description, 'description'))
 
 
 def extract_releases(html):
@@ -61,24 +65,25 @@ def extract_data(r):
 
 
 def data_to_description(data):
-    data = data.decode('utf-8', 'ignore')
+    if six.PY2:
+        data = data.decode('utf-8', 'ignore')
     description = data.encode('ascii', 'ignore')
     return description
 
 if __name__ == '__main__':
     if len(sys.argv) <2:
-        print "Error. You must set API_URL"
+        print("Usage:\n./rssFeedGen.py API_URL")
         sys.exit(2)
 
     api_url = sys.argv[1] + '/'
-    print "RSS feed url: {}".format(api_url)
+    print("RSS feed url: {}".format(api_url))
     
     items = []
     pathToReleaseNotes = 'chsdi/static/doc/build/releasenotes/index.html'
     try:
         releases = extract_releases(pathToReleaseNotes)
     except IOError as e:
-        print '%s does nor exist' % pathToReleaseNotes
+        print('%s does nor exist' % pathToReleaseNotes)
         raise IOError(e)
 
     i = 0
@@ -110,6 +115,8 @@ if __name__ == '__main__':
 
     # Make the feed validate (https://validator.w3.org/feed/check.cgi?)
     rss = rss.to_xml('utf-8')
+    if six.PY3:
+        rss = bytes(rss, 'utf-8')
     root = etree.fromstring(rss)
     new_root = Element('rss', nsmap={'atom':XMLNamespaces.atom})
     new_root.attrib['version'] = '2.0'
@@ -123,6 +130,13 @@ if __name__ == '__main__':
     link = channel.find("link")
     link.addnext(atom_link)
     new_root.append(channel)
-
-    with open('chsdi/static/doc/build/releasenotes/rss2.xml', 'w') as xml:
-        xml.write(etree.tostring(new_root, pretty_print=True))
+    
+    try:
+        with open(RSS_FILE, 'w') as xml:
+            content = etree.tostring(new_root, pretty_print=True)
+            if six.PY3:
+                content = content.decode('utf-8')
+            xml.write(content)
+        print("RSS file written to {}".format(RSS_FILE))
+    except IOError as e:
+        print("Error while writting RSS file")

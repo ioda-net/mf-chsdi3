@@ -3,10 +3,13 @@
 
 <%!
 import datetime
-import urllib
 from pyramid.url import route_url
 import chsdi.lib.helpers as h
 import markupsafe
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
 
 def br(text):
     return text.replace('\n', markupsafe.Markup('<br />'))
@@ -46,7 +49,7 @@ def get_viewer_url(request, params):
         'lang': params[6],
         'rotation': params[7]
     }
-    return h.make_agnostic(route_url('luftbilder', request)) + '?' + urllib.urlencode(f)
+    return h.make_agnostic(route_url('luftbilder', request)) + '?' + urlencode(f)
 
 %>
 
@@ -56,14 +59,6 @@ def get_viewer_url(request, params):
 tt_lubis_ebkey = c['layerBodId'] + '.' + 'id'
 lang = lang if lang in ('fr','it','en') else 'de'
 c['stable_id'] = True
-
-if c['layerBodId'] == 'ch.swisstopo.lubis-luftbilder_farbe':
-    imgtype = 1
-elif c['layerBodId'] == 'ch.swisstopo.lubis-luftbilder_infrarot':
-    imgtype = 2
-else:
-    imgtype = 0
-endif
 
 toposhopscan = 'nein'
 if c['attributes']['filename'] :
@@ -156,13 +151,6 @@ viewer_url = get_viewer_url(request, params)
 <%def name="extended_info(c, lang)">
 <%
 c['stable_id'] = True
-if c['layerBodId'] == 'ch.swisstopo.lubis-luftbilder_farbe':
-    imgtype = 1
-elif c['layerBodId'] == 'ch.swisstopo.lubis-luftbilder_infrarot':
-    imgtype = 2
-else:
-    imgtype = 0
-endif
 protocol = request.scheme
 c['baseUrl'] = h.make_agnostic(''.join((protocol, '://', request.registry.settings['geoadminhost'])))
 topic = request.matchdict.get('map')
@@ -235,9 +223,9 @@ shop_url = request.registry.settings['shop_url']
     <tr><th class="cell-left">${_('tt_lubis_rotation')}</th>         <td>${c['attributes']['rotation'] or '-'}</td></tr>
 % if 'contact_web' not in c['attributes']:
   <tr class="chsdi-no-print">
-    <th class="cell-left">${_('link')} Toposhop</th>
+    <th class="cell-left">${_('link')} Online Shop</th>
     <td><a href="https:${shop_url}/${lang}/dispatcher?layer=${c['layerBodId']}&featureid=${c['featureId']}"
-    target="toposhop">Toposhop</a></td>
+    target="toposhop">Online Shop</a></td>
   </tr>
 % endif
 % if 'contact_web' in c['attributes']:

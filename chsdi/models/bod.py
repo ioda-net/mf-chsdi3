@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
 
+
+import cachetools.func
+
 from gatilegrid import getTileGrid
 from sqlalchemy import Column, Unicode, Integer, Boolean, DateTime, Float
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.exc import SQLAlchemyError
 
 from chsdi.lib.helpers import make_agnostic, shift_to
 from chsdi.models import bases, models_from_bodid, get_models_attributes_keys
+
+import logging
+
+log = logging.getLogger(__name__)
+
+# Interval (sec) between two request to translation table
+DYNAMIC_TRANSLATION_TTL = 3600
 
 Base = bases['bod']
 
@@ -398,9 +409,9 @@ class Catalog(Base):
         return dict([
             (k, getattr(self, k)) for
             k in self.__dict__.keys()
-            if not k.startswith("_") and
-            self.__dict__[k] is not None and
-            k not in ('nameDe', 'nameFr', 'nameIt', 'nameRm', 'nameEn')
+            if not k.startswith("_")
+            and self.__dict__[k] is not None
+            and k not in ('nameDe', 'nameFr', 'nameIt', 'nameRm', 'nameEn')
         ])
 
     def _get_label_from_lang(self, lang):
@@ -486,3 +497,48 @@ class CacheUpdate(Base):
     id = Column('layer_id', Unicode, primary_key=True)
     cache_type = Column('cache_type', Unicode)
     cache_modified = Column('cache_modified', DateTime)
+
+
+class Translations(Base):
+    __dbname__ = 'bod'
+    __tablename__ = 'translations'
+    __table_args__ = ({'schema': 'public', 'autoload': False})
+    msgId = Column('msg_id', Unicode, primary_key=True)
+    id = Column('bgdi_id', Integer)
+    de = Column('de', Unicode)
+    fr = Column('fr', Unicode)
+    it = Column('it', Unicode)
+    rm = Column('rm', Unicode)
+    en = Column('en', Unicode)
+
+
+@cachetools.func.ttl_cache(ttl = DYNAMIC_TRANSLATION_TTL)
+def get_translations(lang, session):
+    # Returns the the translation dictionnary from BOD for all supported langs.
+    log.debug('Get translations from DB for "{}"'.format(lang))
+
+    d = {}
+    try:
+        query = session.query(Translations)
+        results = query.all()
+        for row in results:
+            d[row.msgId] = getattr(row, lang)
+    except SQLAlchemyError as e:
+        log.error("Cannot get translations from BOD: {}".format(e))
+        return None
+
+    return d
+
+
+class WmsConfiguration(Base):
+    __dbname__ = 'bod'
+    __tablename__ = 'tileset'
+    __table_args__ = ({'schema': 'public', 'autoload': False})
+    datasetId = Column('fk_dataset_id', Unicode, primary_key=True)
+    fmt = Column('format', Unicode)
+    cache_ttl = Column('cache_ttl', Unicode)
+    resolution_max = Column('resolution_max', Float)
+    resolution_min = Column('resolution_min', Float)
+    timestamp = Column('timestamp', Integer)
+    wms_gutter = Column('wms_gutter', Float)
+    s3_resolution_max = Column('s3_resolution_max', Float)

@@ -41,7 +41,8 @@ RESTFul interface is available.
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **lang (optional)**               | The language. Supported values: de, fr, it , rm, en. Defaults to "de".                    |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | The name of the callback function.                                                        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
@@ -283,11 +284,17 @@ No more than 50 features can be retrieved per request.
 | **layers (optional)**             | The layers to perform the identify operation on. Per default query all the layers in the  |
 |                                   | GeoAdmin API. Notation: all:"comma separated list of technical layer names".              |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **mapExtent (required)**          | The extent of the map. (minx, miny, maxx, maxy).                                          |
+| **mapExtent**                     | The extent of the map. (minx, miny, maxx, maxy). Optional if *tolereance=0*. Default to   |
+|    **(required/optional)**        | The mapExtent and the imageDisplay parameters are used by the server to calculate the     |
+|                                   | 0,0,0,0                                                                                   |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **imageDisplay (required)**       | The screen image display parameters (width, height, and dpi) of the map.                  |
-|                                   | The mapExtent and the imageDisplay parameters are used by the server to calculate the     |
+| **imageDisplay**                  | The screen image display parameters (width, height, and dpi) of the map.                  |
+|    **(required/optional)**        | The mapExtent and the imageDisplay parameters are used by the server to calculate the     |
 |                                   | the distance on the map to search based on the tolerance in screen pixels.                |
+|                                   | Optional if *tolerance=0*. Default to 0,0,0                                               |
+|                                   |                                                                                           |
+|                                   | The combination of *mapExtent* and *imageDisplay* is used to compute a *resultion* or     |
+|                                   | *scale*. Some layer have *scale* dependant geometries                                     |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **tolerance (required)**          | The tolerance in pixels around the specified geometry. This parameter is used to create   |
 |                                   | a buffer around the geometry. Therefore, a tolerance of 0 deactivates the buffer          |
@@ -298,12 +305,133 @@ No more than 50 features can be retrieved per request.
 | **geometryFormat (optional)**     | Returned geometry format.                                                                 |
 |                                   | Default to ESRI geometry format. Supported values are: "esrijson" or "geojson".           |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **offset (optional)**             | Offset for the first record (if more than 50 records)                                     |
+|                                   |                                                                                           |
++-----------------------------------+-------------------------------------------------------------------------------------------+
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **lang (optional)**               | The language. Supported values: de, fr, it , rm, en. Defaults to "de".                    |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
+| **layerDefs (optional)**          | Filter features with an expression.                                                       |
+|                                   | Syntax: `{ "<layerId>" : "<layerDef1>" }` where `<layerId>` must correspond to the layer  |
+|                                   | specified in `layers`.                                                                    |
++-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | The name of the callback function.                                                        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
+
+Tolerance, mapExtent and imageDisplay
+*************************************
+
+If *tolerance=0*, *imageDisplay* and *mapExtent* are generaly not needed, except to get models which are scale dependant, e.g.
+displaying points at smaller scales and polygons ar larger one.
+If using *tolerance>0*, bot *imageDisplay* and *mapExtent* must be set to meaningfull values. As the *teloerance* is in pixels, 
+these value are used to convert it to map units, _i.e._ meters.
+
+The following table summarize the various combinations:
+
++--------------------+------------------------------------------+-----------------------------------------+
+|                    | imageDisplay=0,0,0  mapExtent=0,0,0,0    |  imageDisplay=1,1,1  mapExtent=1,1,1,1  |     
++====================+==========================================+=========================================+
+| **tolerance=0**    | No buffer & No scale                     |  No buffer & but scale                  |
++--------------------+------------------------------------------+-----------------------------------------+
+| **tolerance>0**    | Forbidden                                |  Buffer & Scale                         |
++--------------------+------------------------------------------+-----------------------------------------+
+
+
+Filters
+*******
+
+You may filter by attributes with **layerDefs** on `queryable layers <../api/faq/index.html#which-layers-are-queryable>`_.
+
+To check which attributes are availables, their types and examples values for a given searchable layer, you may use the `attributes services <../../../services/sdiservices.html#layer-attributes>`_.
+
+For instance, the layer **ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill** has the following two attributes:
+
+    http://api3.geo.admin.ch/rest/services/api/MapServer/ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill
+
+.. code-block:: javascript
+
+    {
+       "fields":[
+          {
+             "values":[
+                "Epalinges",
+                "Ependes (VD)",
+                "Grub (AR)",
+                "Leuk",
+                "Uesslingen-Buch"
+             ],
+             "alias":"Name",
+             "type":"VARCHAR",
+             "name":"gemname"
+          },
+          {
+             "values":[
+                3031,
+                4616,
+                5584,
+                5914,
+                6110
+             ],
+             "alias":"BFS-Nummer",
+             "type":"INTEGER",
+             "name":"id"
+          }
+       ],
+       "id":"ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill",
+       "name":"Municipal boundaries"
+    }
+
+
+layerDefs syntax
+****************
+
+The syntax of the `layerDefs` parameter is a json with the layername as key and the filter expression as value:
+
+::
+
+  {"<layername>":"<filter_expression>"}
+
+The filter expression can consist of a single expression of the form `<attribute> <operator> <value>` or several of these expressions combined with boolean operators `and` and `or`, e.g.
+
+::
+
+  state='open' and startofconstruction>='2018-10'
+ 
+`<attribute>` must be one of the queryable attributes, the type of `<value>` must correspond the the type of the queryable attribute (see above) and `<operator>` can be one of 
+
++-----------------+--------------------------------------+----------------------------------------------------------------+
+|  Data type      |                Operators             |     Examples                                                   |
++=================+======================================+================================================================+
+|  varchar        |  =, +=, like, ilike, not like        |  toto ='3455 Kloten', toto ilike '%SH%', toto is null          |
+|                 |  not ilike, is null, is not null     |  toto ilike 'SH%'                                              |
++-----------------+--------------------------------------+----------------------------------------------------------------+
+|  number         |  =, <, >, >=, <=, !=                 |  tutu >= 2.4 tutu<5                                            |
++-----------------+--------------------------------------+----------------------------------------------------------------+
+|  boolean        |  is (true|false), is not (true|false)|  tata is not false                                             |
++-----------------+--------------------------------------+----------------------------------------------------------------+
+
+
+Correct encoding
+****************
+
+It's important, that the parameters are correctly serialized and url-encoded, e.g.
+
+.. code-block:: python
+
+    >>> import json
+    >>> import urllib.parse
+    >>> params = {
+            "ch.swisstopo.amtliches-strassenverzeichnis": "plzo = '8302 Kloten'"
+        }
+    >>> print(json.dumps(params))
+    {"ch.swisstopo.amtliches-strassenverzeichnis": "plzo = '8302 Kloten'"}
+    >>> print(urllib.parse.quote(json.dumps(params)))
+    %7B%22ch.swisstopo.amtliches-strassenverzeichnis%22%3A%20%22plzo%20%3D%20%278302%20Kloten%27%22%7D
+    >>> print('&layerDefs={}'.format(urllib.parse.quote(json.dumps(params))))
+    &layerDefs=%7B%22ch.swisstopo.amtliches-strassenverzeichnis%22%3A%20%22plzo%20%3D%20%278302%20Kloten%27%22%7D
+
 
 Examples
 ********
@@ -314,6 +442,8 @@ Examples
 - Identify all the features belonging to ch.bafu.bundesinventare-bln intersecting a polygon: `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometry={"rings":[[[675000,245000],[670000,255000],[680000,260000],[690000,255000],[685000,240000],[675000,245000]]]}&geometryType=esriGeometryPolygon&imageDisplay=500,600,96&mapExtent=548945.5,147956,549402,148103.5&tolerance=5&layers=all:ch.bafu.bundesinventare-bln <../../../rest/services/api/MapServer/identify?geometry={"rings":[[[675000,245000],[670000,255000],[680000,260000],[690000,255000],[685000,240000],[675000,245000]]]}&geometryType=esriGeometryPolygon&imageDisplay=500,600,96&mapExtent=548945.5,147956,549402,148103.5&tolerance=5&layers=all:ch.bafu.bundesinventare-bln>`_
 - Same request than above but returned geometry format is GeoJSON: `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=548945.5,147956,549402,148103.5&imageDisplay=500,600,96&mapExtent=548945.5,147956,549402,148103.5&tolerance=1&layers=all:ch.bfs.arealstatistik-1985&geometryFormat=geojson <../../../rest/services/api/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=548945.5,147956,549402,148103.5&imageDisplay=500,600,96&mapExtent=548945.5,147956,549402,148103.5&tolerance=1&layers=all:ch.bfs.arealstatistik-1985&geometryFormat=geojson>`_
 - Same request than above but geometry is not returned: `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=548945.5,147956,549402,148103.5&imageDisplay=500,600,96&mapExtent=548945.5,147956,549402,148103.5&tolerance=1&layers=all:ch.bfs.arealstatistik-1985&returnGeometry=false <../../../rest/services/api/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=548945.5,147956,549402,148103.5&imageDisplay=500,600,96&mapExtent=548945.5,147956,549402,148103.5&tolerance=1&layers=all:ch.bfs.arealstatistik-1985&returnGeometry=false>`_
+- Filter features with **layerDefs**: `https://api3.geo.admin.ch/rest/services/all/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=2548945.5,1147956,2549402,1148103.5&geometryFormat=geojson&imageDisplay=1367,949,96&lang=en&layers=all:ch.bazl.luftfahrthindernis&mapExtent=2318250,952750,3001750,1427250&returnGeometry=false&sr=2056&tolerance=5&layerDefs={"ch.bazl.luftfahrthindernis": "bgdi_activesince >= '2019-04-30'", "ch.bazl.luftfahrthindernis":"state ilike '%A%'"} <../../../rest/services/all/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=2548945.5,1147956,2549402,1148103.5&geometryFormat=geojson&imageDisplay=1367,949,96&lang=en&layers=all:ch.bazl.luftfahrthindernis&mapExtent=2318250,952750,3001750,1427250&returnGeometry=false&sr=2056&tolerance=5&layerDefs=%7B%22ch.bazl.luftfahrthindernis%22%3A%20%22bgdi_activesince%20%3E%3D%20%272019-04-30%27%22%2C%20%22ch.bazl.luftfahrthindernis%22%3A%22state%20ilike%20%27%25A%25%27%22%7D>`_
+
 
 Examples of Reverse Geocoding
 *****************************
@@ -322,6 +452,7 @@ The service identify can be used for Reverse Geocoding operations. Here is a `li
 
 - Perform an identify request to find the districts intersecting a given enveloppe geometry (no buffer): `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=548945.5,147956,549402,148103.5&imageDisplay=0,0,0&mapExtent=0,0,0,0&tolerance=0&layers=all:ch.swisstopo.swissboundaries3d-bezirk-flaeche.fill&returnGeometry=false  <../../../rest/services/api/MapServer/identify?geometryType=esriGeometryEnvelope&geometry=548945.5,147956,549402,148103.5&imageDisplay=0,0,0&mapExtent=0,0,0,0&tolerance=0&layers=all:ch.swisstopo.swissboundaries3d-bezirk-flaeche.fill&returnGeometry=false>`_
 - Perform an identify request to find the municipal boundaries and ZIP (PLZ or NPA) intersecting with a point (no buffer): `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?geometryType=esriGeometryPoint&geometry=548945.5,147956&imageDisplay=0,0,0&mapExtent=0,0,0,0&tolerance=0&layers=all:ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill,ch.swisstopo-vd.ortschaftenverzeichnis_plz&returnGeometry=false <../../../rest/services/api/MapServer/identify?geometryType=esriGeometryPoint&geometry=548945.5,147956&imageDisplay=0,0,0&mapExtent=0,0,0,0&tolerance=0&layers=all:ch.swisstopo.swissboundaries3d-gemeinde-flaeche.fill,ch.swisstopo-vd.ortschaftenverzeichnis_plz&returnGeometry=false>`_
+- Reverse geocoding an `address` with a point (no buffer): `https://api3.geo.admin.ch/rest/services/api/MapServer/identify?mapExtent=0,0,100,100&imageDisplay=100,100,100&tolerance=1&geometryType=esriGeometryPoint&geometry=600968.625,197426.921875&layers=all:ch.bfs.gebaeude_wohnungs_register&returnGeometry=false <../../../rest/services/api/MapServer/identify?mapExtent=0,0,100,100&imageDisplay=100,100,100&tolerance=1&geometryType=esriGeometryPoint&geometry=600968.625,197426.921875&layers=all:ch.bfs.gebaeude_wohnungs_register&returnGeometry=false>`_
 
 
 Simulate a search radius
@@ -386,9 +517,14 @@ One layer, one search text and one attribute.
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **returnGeometry (optional)**     | This parameter defines whether the geometry is returned or not. Default to "true".        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **lang (optional)**               | The language. Supported values: de, fr, it , rm, en. Defaults to "de".                    |
++-----------------------------------+-------------------------------------------------------------------------------------------+
+| **layerDefs (optional)**          | Filter features with an expression (see                                                   |
+|                                   | `identify <../../../services/sdiservices.html#identify-features>`_)                       |
+|                                   | Syntax: `{ "<layerId>" : "<layerDef1>"}`                                                  |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | The name of the callback function.                                                        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
@@ -399,6 +535,7 @@ Examples
 - Search for “Lavaux” in the field “bln_name” of the layer “ch.bafu.bundesinventare-bln” (infix match): `https://api3.geo.admin.ch/rest/services/api/MapServer/find?layer=ch.bafu.bundesinventare-bln&searchText=Lavaux&searchField=bln_name&returnGeometry=false  <../../../rest/services/api/MapServer/find?layer=ch.bafu.bundesinventare-bln&searchText=Lavaux&searchField=bln_name&returnGeometry=false>`_
 - Search for “12316” in the field “egid” of the layer “ch.bfs.gebaeude_wohnungs_register” (infix match): `https://api3.geo.admin.ch/rest/services/api/MapServer/find?layer=ch.bfs.gebaeude_wohnungs_register&searchText=123164&searchField=egid&returnGeometry=false  <../../../rest/services/api/MapServer/find?layer=ch.bfs.gebaeude_wohnungs_register&searchText=123164&searchField=egid&returnGeometry=false>`_
 - Search for “123164” in the field “egid” of the layer “ch.bfs.gebaeude_wohnungs_register” (exact match): `https://api3.geo.admin.ch/rest/services/api/MapServer/find?layer=ch.bfs.gebaeude_wohnungs_register&searchText=1231641&searchField=egid&returnGeometry=false&contains=false <../../../rest/services/api/MapServer/find?layer=ch.bfs.gebaeude_wohnungs_register&searchText=1231641&searchField=egid&returnGeometry=false&contains=false>`_
+- Search for the Talstrasse in Commune 'Full-Reuenthal': `https://api3.geo.admin.ch/rest/services/api/MapServer/find?layer=ch.swisstopo.amtliches-strassenverzeichnis&searchText=Talstrasse&searchField=label&returnGeometry=false&contains=false&layerDefs={"ch.swisstopo.amtliches-strassenverzeichnis": "gdenr = 4307"} <../../../rest/services/api/MapServer/find?layer=ch.swisstopo.amtliches-strassenverzeichnis&searchText=Talstrasse&searchField=label&returnGeometry=false&contains=false&layerDefs=%7B"ch.swisstopo.amtliches-strassenverzeichnis"%3A%20"gdenr%20%3D%204307"%7D>`_
 
 .. _featureresource_description:
 
@@ -430,7 +567,8 @@ RESTFul interface is available.
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **returnGeometry (optional)**     | This parameter defines whether the geometry is returned or not. Default to "true".        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **lang (optional)**               | The language. Supported values: de, fr, it , rm, en. Defaults to "de".                    |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
@@ -442,6 +580,7 @@ Example
 
 - Get the feature with the ID RIG belonging to ch.bafu.nabelstationen: `https://api3.geo.admin.ch/rest/services/api/MapServer/ch.bafu.nabelstationen/RIG <../../../rest/services/api/MapServer/ch.bafu.nabelstationen/RIG>`_
 - Get several features with IDs RIG and LAU belonging to ch.bafu.bundesinventar-bln: `https://api3.geo.admin.ch/rest/services/api/MapServer/ch.bafu.nabelstationen/RIG,LAU <../../../rest/services/api/MapServer/ch.bafu.nabelstationen/RIG,LAU>`_
+- A `GeoJSON` in `EPSG:4326`: `https://api3.geo.admin.ch/rest/services/api/MapServer/ch.bafu.nabelstationen/RIG,LAU?sr=4326&geometryFormat=geojson <../../../rest/services/api/MapServer/ch.bafu.nabelstationen/RIG,LAU?sr=4326&geometryFormat=geojson>`_
 
 .. _htmlpopup_description:
 
@@ -470,7 +609,10 @@ No css styling is provided per default so that you can use your own.
 +===================================+===========================================================================================+
 | **lang (optional)**               | The language. Supported values: de, fr, it , rm, en. Defaults to "de".                    |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
++-----------------------------------+-------------------------------------------------------------------------------------------+
+| **time (optional)**               | Time (YYYY) to filter out time enabled layers, e.g. LUBIS. Defaults to "none".            |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | The name of the callback function.                                                        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
@@ -527,7 +669,7 @@ Only RESTFul interface is available.
 | **type (required)**                 | The type of performed search. Specify `locations` to perform a location search.           |
 +-------------------------------------+-------------------------------------------------------------------------------------------+
 | **bbox (required/optional)**        | Must be provided if the `searchText` is not. A comma separated list of 4 coordinates      |
-|                                     | representing the bounding box on which features should be filtered (SRID: 21781).         |
+|                                     | representing the bounding box on which features should be filtered (SRID: 21781 or 2056). |
 +-------------------------------------+-------------------------------------------------------------------------------------------+
 | **sortbbox (optional)**             | When `bbox` is specified and this parameter is "true", then the ranking of the results is |
 |                                     | performed according to the distance between the locations and the center of the bounding  |
@@ -541,7 +683,11 @@ Only RESTFul interface is available.
 +-------------------------------------+-------------------------------------------------------------------------------------------+
 | **limit (optional)**                | The maximum number of results to retrive per request (Max and default limit=50)           |
 +-------------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                   | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                   | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                     | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
++-------------------------------------+-------------------------------------------------------------------------------------------+
+| **geometryFormat (optional)**       | Set to *geojson* if you want the service to return a GeoJSON `FeatureCollection`.         |
+|                                     | Geometries will be returned in the *sr* projection.                                       |
 +-------------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**             | The name of the callback function.                                                        |
 +-------------------------------------+-------------------------------------------------------------------------------------------+
@@ -559,7 +705,11 @@ Only RESTFul interface is available.
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **limit (optional)**              | The maximum number of results to retrive per request (Max and default limit=30)           |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
++-----------------------------------+-------------------------------------------------------------------------------------------+
+| **geometryFormat (optional)**     | Set to *geojson* if you want the service to return a GeoJSON `FeatureCollection`.         |
+|                                   | Geometries will be returned in the *sr* projection.                                       |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | The name of the callback function.                                                        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
@@ -584,7 +734,11 @@ Only RESTFul interface is available.
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **limit (optional)**              | The maximum number of results to retrive per request (Max and default limit=20)           |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95). Defaults to "21781".  |
+| **sr (optional)**                 | The spatial reference. Supported values: 21781 (LV03), 2056 (LV95), 4326 (WGS84)          |
+|                                   | and 3857 (Web Pseudo-Mercator). Defaults to "21781".                                      |
++-----------------------------------+-------------------------------------------------------------------------------------------+
+| **geometryFormat (optional)**     | Set to *geojson* if you want the service to return a GeoJSON `FeatureCollection`.         |
+|                                   | Geometries will be returned in the *sr* projection.                                       |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | The name of the callback function.                                                        |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
@@ -614,6 +768,53 @@ The results are presented as a list of object literals. Here is an example of re
       }
     }
   ]
+
+or a valid `GeoJSON` `FeatureCollection` if parameter `geometryFormat=geojson` is present
+
+.. code-block:: javascript
+
+    {
+     "type": "FeatureCollection",
+     "bbox": [
+      601612,
+      197186.8,
+      601612,
+      197186.8
+     ],
+     "features": [{
+      "geometry": {
+       "type": "Point",
+       "coordinates": [
+        197186.8125,
+        601612.0625
+       ]
+      },
+      "properties": {
+       "origin": "gazetteer",
+       "geom_quadindex": "021300220330313020221",
+       "weight": 1,
+       "zoomlevel": 10,
+       "lon": 7.459799289703369,
+       "detail": "wabern koeniz",
+       "rank": 5,
+       "lat": 46.925777435302734,
+       "num": 1,
+       "y": 601612.0625,
+       "x": 197186.8125,
+       "label": "<i>Populated Place</i> <b>Wabern</b> (BE) - Köniz",
+       "id": 215754
+      },
+      "type": "Feature",
+      "id": 215754,
+      "bbox": [
+       601612,
+       197186.8,
+       601612,
+       197186.8
+      ]
+     }]
+    }
+
 
 Here is a description of the data one can find in the above response.
 
@@ -651,6 +852,9 @@ Examples
 - Search for locations within a given map extent (the `bbox`): `https://api3.geo.admin.ch/rest/services/api/SearchServer?bbox=551306.5625,167918.328125,551754.125,168514.625&type=locations  <../../../rest/services/api/SearchServer?bbox=551306.5625,167918.328125,551754.125,168514.625&type=locations>`_
 - Search for layers in French matching the word “géoïde” in their description: `https://api3.geo.admin.ch/rest/services/api/SearchServer?searchText=géoïde&type=layers&lang=fr <../../../rest/services/api/SearchServer?searchText=géoïde&type=layers&lang=fr>`_
 - Search for features matching word "433" in their description: `https://api3.geo.admin.ch/rest/services/api/SearchServer?features=ch.bafu.hydrologie-gewaesserzustandsmessstationen&type=featuresearch&searchText=433 <../../../rest/services/api/SearchServer?features=ch.bafu.hydrologie-gewaesserzustandsmessstationen&type=featuresearch&searchText=433>`_
+- Get a GeoJSON for locations matching the word “wabern”: `https://api3.geo.admin.ch/rest/services/api/SearchServer?searchText=wabern&type=locations&geometryFormat=geojson <../../../rest/services/api/SearchServer?searchText=wabern&type=locations&geometryFormat=geojson>`_
+- Get a Webmercator GeoJSON: `https://api3.geo.admin.ch/rest/services/api/SearchServer?searchText=wabern&type=locations&geometryFormat=geojson&sr=3857 <../../../rest/services/api/SearchServer?searchText=wabern&type=locations&geometryFormat=geojson&sr=3857>`_
+- Input `bbox` may also be in `LV95`: `https://api3.geo.admin.ch/rest/services/api/SearchServer?bbox=2551306.5625,1167918.328125,2551754.125,1168514.625&type=locations&sr=2056 <../../../rest/services/api/SearchServer?bbox=2551306.5625,1167918.328125,2551754.125,1168514.625&type=locations&sr=2056>`_
 
 Example of feature search usage with other services
 ***************************************************
@@ -666,8 +870,12 @@ Example of feature search usage with other services
 Height
 ------
 
-This service allows to obtain elevation information for a point. **Note: this service is not freely accessible (fee required).** `Please Contact us <mailto:geodata@swisstopo.ch>`_
+This service allows to obtain elevation information for a point.
 See `Height models <https://shop.swisstopo.admin.ch/de/products/height_models/alti3D>`_ for more details about data used by this service.
+
+.. warning::
+    This service is not freely accessible (fee required). `Please Contact us <mailto:geodata@swisstopo.ch>`_
+
 
 URL
 ***
@@ -688,9 +896,6 @@ RESTFul interface is available.
 +--------------------------------+-----------------------------------------------------------------------------------------+
 | **northing (required)**        | The northing coordinate in LV03 (EPSG:21781) or LV95 (EPSG:2056)                        |
 +--------------------------------+-----------------------------------------------------------------------------------------+
-| **elevation_model (optional)** | The elevation model. Three elevation models are available DTM25, DTM2 (swissALTI3D)     |
-|                                | and COMB (a combination of DTM25 and DTM2). Default to "DTM25".                         |
-+--------------------------------+-----------------------------------------------------------------------------------------+
 | **sr(optional)**               | The reference system to use (EPSG code). Valid values are 2056 (for LV95) and 21781     |
 |                                | (for )LV03). If not given, trying to guess which one to use.                            |
 +--------------------------------+-----------------------------------------------------------------------------------------+
@@ -709,8 +914,11 @@ Examples
 Profile
 -------
 
-This service allows to obtain elevation information for a polyline in CSV format. **Note: this service is not freely accessible (fee required).** `Please Contact us <mailto:geodata@swisstopo.ch>`_
+This service allows to obtain elevation information for a polyline in CSV format.
 See `Height models <https://shop.swisstopo.admin.ch/de/products/height_models/alti3D>`_ for more details about data used by this service.
+
+.. warning::
+    This service is not freely accessible (fee required).** `Please Contact us <mailto:geodata@swisstopo.ch>`_
 
 URL
 ***
@@ -734,9 +942,6 @@ RESTFul interface is available.
 | **sr (optional)**                 | The reference system to use (EPSG code). Valid value are 2056 (for LV95) and 21781 (for   |
 |                                   | LV03). Strongly advised to set one, but if not given, trying to guess which one to use.   |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
-| **elevation_models (optional)**   | A comma separated list of elevation models. Three elevation models are available DTM25,   |
-|                                   | DTM2 (swissALTI3D) and COMB (a combination of DTM25 and DTM2).  Default to "DTM25".       |
-+-----------------------------------+-------------------------------------------------------------------------------------------+
 | **nb_points (optional)**          | The number of points used for the polyline segmentation. Default "200".                   |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
 | **offset (optional)**             | The offset value (INTEGER) in order to use the `exponential moving algorithm              |
@@ -744,8 +949,12 @@ RESTFul interface is available.
 |                                   | value the offset value specify the number of values before and after used to calculate    |
 |                                   | the average.                                                                              |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
+| **distinct_points (optional)**    | If True, it will ensure the coordinates given to the service are part of the response.    |
+|                                   | Possible values are True or False, default to False.                                      |
++-----------------------------------+-------------------------------------------------------------------------------------------+
 | **callback (optional)**           | Only available for **profile.json**. The name of the callback function.                   |
 +-----------------------------------+-------------------------------------------------------------------------------------------+
+
 
 Example
 *******
@@ -762,24 +971,14 @@ WMTS
 
 A RESTFul implementation of the `WMTS <http://www.opengeospatial.org/standards/wmts>`_ `OGC <http://www.opengeospatial.org/>`_ standard.
 For detailed information, see `WMTS OGC standard <http://www.opengeospatial.org/standards/wmts>`_
-In order to have access to the WMTS, you require a `swisstopo web access - WMTS documentation <https://www.swisstopo.ch/webaccess>`_,
-despite the fact that most layers are free to use. See :ref:`available_layers` for a list of all available layers.
 
+.. warning::
+    In order to have access to the WMTS, you require to register to `swisstopo web access - Inscription form`_ (in German),
+    even if most layers are free to use. See :ref:`available_layers` for a list of all available layers.
 
-URL
-***
+.. note::
+    Only the RESTFul request encoding to `GetTile` is implemented, not the `GetLegend` and `GetFeatureInfo`. No KVP and SOAP request encoding is supported.
 
-- http://wmts.geo.admin.ch or https://wmts.geo.admin.ch
-- http://wmts0.geo.admin.ch or https://wmts0.geo.admin.ch
-- http://wmts1.geo.admin.ch or https://wmts1.geo.admin.ch
-- http://wmts2.geo.admin.ch or https://wmts2.geo.admin.ch
-- http://wmts3.geo.admin.ch or https://wmts3.geo.admin.ch
-- http://wmts4.geo.admin.ch or https://wmts4.geo.admin.ch
-- http://wmts5.geo.admin.ch or https://wmts5.geo.admin.ch
-- http://wmts6.geo.admin.ch or https://wmts6.geo.admin.ch
-- http://wmts7.geo.admin.ch or https://wmts7.geo.admin.ch
-- http://wmts8.geo.admin.ch or https://wmts8.geo.admin.ch
-- http://wmts9.geo.admin.ch or https://wmts9.geo.admin.ch
 
 
 GetCapabilities
@@ -791,10 +990,8 @@ The GetCapabilites document provides informations about the service, along with 
 
 `https://wmts.geo.admin.ch/1.0.0/WMTSCapabilities.xml?lang=fr <https://wmts.geo.admin.ch/1.0.0/WMTSCapabilities.xml?lang=fr>`_
 
-Parameters
-**********
-
-Only the RESTFul interface is implemented. No KVP and SOAP.
+GetTile
+*******
 
 ::
 
@@ -811,7 +1008,7 @@ Version                1.0.0                           WMTS protocol version
 Layername              ch.bfs.arealstatistik-1997      See the WMTS `GetCapabilities <//wmts.geo.admin.ch/1.0.0/WMTSCapabilities.xml>`_ document.
 StyleName              default                         Only **default** is supported.
 Time                   2010, 2010-01                   Date of tile generation in (ISO-8601) or logical value like **current**. A list of available values is provided in the `GetCapabilities <//wmts.geo.admin.ch/1.0.0/WMTSCapabilities.xml>`_ document under the <Dimension> tag. We recommend to use the value under the <Default> tag. Note that these values might change frequently - **check for updates regularly**.
-TileMatrixSet          21781 (constant)                EPSG code for LV03/CH1903
+TileMatrixSet          2056  (constant)                EPSG code for LV03/CH1903
 TileSetId              22                              Zoom level (see below)
 TileRow                236
 TileCol                284
@@ -867,16 +1064,14 @@ Resolution [m]   Zoomlevel Map zoom  Tile width m Tiles X  Tiles Y    Tiles     
 
 **Notes**
 
-#. The projection for the tiles is **LV03** (EPSG:21781). Other projection are supported, see further down.
-#. The tiles are pregenerated and stored in a way it supports a heavy load (many hundreds requests per second)
+#. The projection for the tiles is **LV95** (EPSG:2056). Other projection are supported, see further down.
+#. The tiles are generated on-the-fly and stored in a cache (hundreds of requests per second)
 #. The zoom level 24 (resolution 1.5m) has been generated, but is not currently used in the API.
 #. The zoom levels 27 and 28 (resolution 0.25m and 0.1m) are only available for a few layers,
    e.g. swissimage or cadastral web map. For the others layers it is only a client zoom (tiles are stretched).
 #. You **have** to use the `<ResourceURL>` to construct the `GetTile` request.
-#. **Axis order**: EPSG:21781 native WMTS tiles (*pregenerated* and stored in S3) use the
-   non-standard **row/col** order, while the Mapproxy reprojected ones (all other projections)
-   use the usual **col/row** order. The exception being *ch.kantone.cadastralwebmap-farbe* which always use
-   the **col/row** order.
+#. **Axis order**: for historical reasons, EPSG:21781 WMTS tiles use the
+   non-standard **row/col** order, while all other projections use the usual **col/row** order.
    However, most desktop GIS allow you to either use the advertized order or to override it.
 #. The tiles of a given layer might be updated **withtout** resulting in a new <Time> dimension in the GetCapabilities dimension. In case your application is caching tiles locally, you need to invalidate your local cache for this layer. To check the latest change of any layer, use the `Cache Update`_ service.
 
@@ -891,16 +1086,17 @@ or https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/2011040
 
 
 
-Other projections
------------------
+Supported projections
+---------------------
 
-Beside, the **LV03** projection, the same tiles are offered in four other *tilematrixsets/projection*.
-These projections are:
+Four projections are supported. The same tiles are offered in four other *tilematrixsets/projection*.
 
-* Plate-Carrée WGS1984 (EPSG:4326)
-    `https://wmts.geo.admin.ch/EPSG/4326/1.0.0/WMTSCapabilities.xml <https://wmts.geo.admin.ch/EPSG/4326/1.0.0/WMTSCapabilities.xml>`_
 * LV95/CH1903+ (EPSG:2056)
     `https://wmts.geo.admin.ch/EPSG/2056/1.0.0/WMTSCapabilities.xml <https://wmts.geo.admin.ch/EPSG/2056/1.0.0/WMTSCapabilities.xml>`_
+* LV03/CH1903 (EPSG:21781)
+    `https://wmts.geo.admin.ch/EPSG/21781/1.0.0/WMTSCapabilities.xml <https://wmts.geo.admin.ch/EPSG/21781/1.0.0/WMTSCapabilities.xml>`_
+* Plate-Carrée WGS1984 (EPSG:4326)
+    `https://wmts.geo.admin.ch/EPSG/4326/1.0.0/WMTSCapabilities.xml <https://wmts.geo.admin.ch/EPSG/4326/1.0.0/WMTSCapabilities.xml>`_
 * WGS84/Pseudo-Mercator (EPSG:3857, as used in OSM, Bing, Google Map)
     `https://wmts.geo.admin.ch/EPSG/3857/1.0.0/WMTSCapabilities.xml <https://wmts.geo.admin.ch/EPSG/3857/1.0.0/WMTSCapabilities.xml>`_
 
@@ -959,7 +1155,7 @@ Terrain Service
 
 A RESTFul implementation of "`Cesium <http://cesiumjs.org/>`_" `Quantized Mesh <https://github.com/AnalyticalGraphicsInc/quantized-mesh>`_ terrain service.
 Terrain tiles are served according to the `Tile Map Service (TMS) <http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification>`_ layout and global-geodetic profile.
-In order to access the terrain tiles, you require a `swisstopo web access - WMTS documentation <https://www.swisstopo.ch/webaccess>`_.
+In order to access the terrain tiles, you require to fill a `swisstopo web access - Inscription form`_ (in German).
 
 URL
 ***
@@ -975,7 +1171,7 @@ Metadata Service
 
 The `layer.json` file determines which terrain tiles are available.
 
-- https://3d.geo.admin.ch/1.0.0/ch.swisstopo.terrain.3d/default/20160115/4326/layer.json
+- https://3d.geo.admin.ch/1.0.0/ch.swisstopo.terrain.3d/default/20180601/4326/layer.json
 
 Parameters
 **********
@@ -1040,7 +1236,65 @@ Resoultion [m/pixel at equator] Zoomlevel Availability
 Example
 *******
 
-* A `Terrain tile <https://terrain2.geo.admin.ch/1.0.0/ch.swisstopo.terrain.3d/default/20160115/4326/12/4309/3111.terrain>`_
+* A `Terrain tile <https://terrain2.geo.admin.ch/1.0.0/ch.swisstopo.terrain.3d/default/20180601/4326/12/4309/970.terrain>`_
+
+.. _vectortiles_description:
+
+-------------------
+
+Mapbox Vector Tiles
+-------------------
+A RESTFul implementation of `Mapbox Vector Tiles <https://www.mapbox.com/vector-tiles>`_.
+For the testing phase, the service is free for use. See conditions `conditions <https://www.geo.admin.ch/en/geo-services/geo-services/portrayal-services-web-mapping/vector_tiles_service.html>`_
+
+The service provides both *tiles* and *styles* that the customer can use. 
+
+GetTile
+*******
+
+A tile request is in the following form:
+
+::
+
+    <Scheme>://<ServerName>/mbtiles/<LayerName>/<version>/<zoomlevel>/<x>/<y>.pbf
+
+example of one pbf tile:
+
+- https://vectortiles.geo.admin.ch/mbtiles/ch.swisstopo.leichte-basiskarte.vt/v006/7/67/44.pbf
+
+GetStyle
+********
+
+A style request is in the following form:
+
+::
+
+    <Scheme>://<ServerName>/gl-styles/<layername>/<version>/style.json
+
+example of a mapbox style:
+
+- https://vectortiles.geo.admin.ch/gl-styles/ch.swisstopo.leichte-basiskarte.vt/v006/style.json
+
+Available datasets and styles as mapbox vector tiles
+****************************************************
+
+The list of current datasets and styles is available visiting the `official service description <https://www.geo.admin.ch/en/geo-services/geo-services/portrayal-services-web-mapping/vector_tiles_service.html#available-geodata>`_
+
+
+Metadata Service
+****************
+
+Each tileset has a corresponding metatda `json` file that describes the available set of tiles.
+The URL of the metadata `json` file is : 
+
+::
+
+   <Scheme>://<ServerName>/mbtiles/<LayerName>/<version>.json
+
+example of tileset: 
+
+- https://vectortiles.geo.admin.ch/mbtiles/ch.swisstopo.leichte-basiskarte.vt/v006.json
+
 
 
 .. _tiles3d_description:
@@ -1050,27 +1304,32 @@ Example
 3D Tiles
 ----------
 A RESTFul implementation of "`Cesium <http://cesiumjs.org/>`_" `3D Tiles specification <https://github.com/AnalyticalGraphicsInc/3d-tiles>`_.
-In order to access the 3D tiles, you require a `swisstopo web access - WMTS documentation <https://www.swisstopo.ch/webaccess>`_.
+In order to access the 3D tiles, you require a `swisstopo web access - Inscription form`_ .
 
 URL
 ***
 
-- https://vectortiles.geo.admin.ch
+- https://vectortiles0.geo.admin.ch/3d-tiles/
+- https://vectortiles1.geo.admin.ch/3d-tiles/
+- https://vectortiles2.geo.admin.ch/3d-tiles/
+- https://vectortiles3.geo.admin.ch/3d-tiles/
+- https://vectortiles4.geo.admin.ch/3d-tiles/
 
 Metadata Service
 ****************
 
 The `tileset.json` file describes the available set of tiles. In order to use this service, you must currently use a fork of CesiumJS, `the 3d-tiles branch <https://github.com/AnalyticalGraphicsInc/cesium/tree/3d-tiles>`_. Stay informed and have a look at the current `RoadMap for 3D Tiles <https://github.com/AnalyticalGraphicsInc/cesium/issues/3241>`_.
 
-Currently, 2 technical layers (ch.swisstopo.swisstlm3d.3d, ch.swisstopo.swissnames3d.3d) are available and they contains all available 3D objects. Additional layers will be available in the future. Partial 3D buildings model coverage can be vizsualised `here <https://s.geo.admin.ch/70fb32e692>`_.
+Currently, 3 technical layers (ch.swisstopo.swisstlm3d.3d, ch.swisstopo.swissnames3d.3d, ch.swisstopo.vegetation.3d) are available and they contains all available 3D objects. Additional layers will be available in the future. Partial 3D buildings model coverage can be vizsualised `here <https://s.geo.admin.ch/70fb32e692>`_.
 
-- https://vectortiles.geo.admin.ch/ch.swisstopo.swisstlm3d.3d/20170425/tileset.json
-- https://vectortiles.geo.admin.ch/ch.swisstopo.swissnames3d.3d/20170814/tileset.json
+- https://vectortiles0.geo.admin.ch/3d-tiles/ch.swisstopo.swisstlm3d.3d/20190924/tileset.json
+- https://vectortiles0.geo.admin.ch/3d-tiles/ch.swisstopo.swissnames3d.3d/20180716/tileset.json
+- https://vectortiles0.geo.admin.ch/3d-tiles/ch.swisstopo.vegetation.3d/20190313/tileset.json
 
 Example
 *******
 
-* A `3D tile <https://vectortiles.geo.admin.ch/ch.swisstopo.swisstlm3d.3d/20170425/8/41/41.b3dm?v=1.0>`_
+* A `3D tile <https://vectortiles0.geo.admin.ch/3d-tiles/ch.swisstopo.swisstlm3d.3d/20190924/8/41/50.b3dm?v=1.0>`_
 
 .. _sparql_description:
 
@@ -1093,13 +1352,51 @@ Available datasets
 ******************
 
 - `swissBOUNDARIES3D <https://ld.geo.admin.ch/data/swissBOUNDARIES3D>`_
+- `Public transport stops <https://ld.geo.admin.ch/data/PublicTransportStops>`_
 
 Examples
 ********
 
-- `Get the top five most populated municipalities in 2016 <https://tinyurl.com/hxzfqel>`_
-- `Get the 2016 version of the administrative units at coordinate (lon,lat) 7.43, 46.95 <https://tinyurl.com/jjtk9a5>`_
-- `Get all the districts by canton number and year <https://tinyurl.com/jghhphw>`_
+- `Get the top five most populated municipalities in 2016 <https://tinyurl.com/ybfn8mlt>`_
+- `Get the 2016 version of the administrative units at coordinate (lon,lat) 7.43, 46.95 <https://tinyurl.com/yb985olj>`_
+- `Get all the districts by canton number and year <https://tinyurl.com/y8fovmtw>`_
 - `Get all the versions of a resource by URI <https://tinyurl.com/hvw2zhq>`_
-- `Get the corresponding resource in Wikidata and GeoNames (Municipality) <https://tinyurl.com/jqkkwrv>`_
-- `Get the Wikipedia abstract (Municipality) <https://tinyurl.com/z42lts9>`_
+- `Get the corresponding resource in Wikidata and GeoNames (Municipality) <https://tinyurl.com/y8ln886n>`_
+- `Get the Wikipedia abstract (Municipality) <https://tinyurl.com/y89hcpce>`_
+- `Get the five highest stops <https://tinyurl.com/yah7tbwd>`_
+- `Get stops above 3000 meters <https://tinyurl.com/yauhxk6x>`_
+- `Get stops with means of transportation = Rack railway, boat <https://tinyurl.com/ycu5gly6>`_
+
+
+.. _inspireAtomFeed:
+
+----------------------------------------
+
+Atom Feed / Open Search Download Service
+----------------------------------------
+
+This service enables the download of datasets conforming to the `INSPIRE Data Specifications <https://inspire.ec.europa.eu/data-specifications/2892>`_. It is implemented as an Atom Feed / Open Search service according to the `Technical Guidance for the implementation of INSPIRE Download Services  <https://inspire.ec.europa.eu/sites/default/files/documents/network-services/technical_guidance_download_services_v3.1.pdf>`_.
+
+URL
+***
+
+::
+
+  https://atom.geo.admin.ch/inspire/service.xml - Service Feed
+  https://atom.geo.admin.ch/inspire/search/opensearchdescription.xml - Open Search Description Document
+  https://atom.geo.admin.ch/inspire/search?q={} - Search Interface
+
+Available datasets
+******************
+
+- `Administrative units <https://www.geocat.ch/geonetwork/srv/eng/catalog.search#/metadata/fc2c80e5-fc87-415a-ac05-b2520957d155>`_
+- `Geographical Names <https://www.geocat.ch/geonetwork/srv/eng/catalog.search#/metadata/e81d4df0-52c8-4258-a38b-96f6761c976b>`_
+
+Examples
+********
+
+- `Get a Dataset Feed (Describe Spatial Data Set Operation) <https://atom.geo.admin.ch/inspire/search?spatial_dataset_identifier_code=e81d4df0-52c8-4258-a38b-96f6761c976b&spatial_dataset_identifier_namespace=http://www.swisstopo.ch/>`_ (code and namespace to be found in the Open Search Description Document)
+- `Get a dataset (Get Spatial Data Set Operation) <https://atom.geo.admin.ch/inspire/search?spatial_dataset_identifier_code=e81d4df0-52c8-4258-a38b-96f6761c976b&spatial_dataset_identifier_namespace=http://www.swisstopo.ch/&crs=http://www.opengis.net/def/crs/EPSG/0/3857>`_ (code, namespace and crs to be found in the Open Search Description Document)
+- `Search for all available downloads <https://atom.geo.admin.ch/inspire/search?q=inspire>`_
+
+.. _`swisstopo web access - Inscription form`: https://www.geo.admin.ch/de/geo-dienstleistungen/geodienste/darstellungsdienste-webmapping-webgis-anwendungen/programmierschnittstelle-api/anmeldung.html

@@ -1,4 +1,5 @@
 SHELL = /bin/bash
+.DEFAULT_GOAL := help
 
 # Macro functions
 lastvalue = $(shell if [ -f .venv/last-$1 ]; then cat .venv/last-$1 2> /dev/null; else echo '-none-'; fi;)
@@ -26,18 +27,35 @@ HTTP_PROXY := http://ec2-52-28-118-239.eu-central-1.compute.amazonaws.com:80
 BRANCH_STAGING := $(shell if [ '$(DEPLOY_TARGET)' = 'dev' ]; then echo 'test'; else echo 'integration'; fi)
 GIT_BRANCH := $(shell if [ -f '.venv/deployed-git-branch' ]; \
 							  then cat .venv/deployed-git-branch 2> /dev/null; else git rev-parse --symbolic-full-name --abbrev-ref HEAD; fi)
+GIT_COMMIT_HASH ?= $(shell git rev-parse --verify HEAD)
+GIT_COMMIT_SHORT ?= $(shell git rev-parse --short $(GIT_COMMIT_HASH))
+GIT_COMMIT_DATE ?= $(shell git log -1  --date=iso --pretty=format:%cd)
+CURRENT_DATE ?= $(shell date -u +"%Y-%m-%d %H:%M:%S %z")
 NO_TESTS ?= withtests
 NODE_DIRECTORY := node_modules
 APACHE_ENTRY_PATH := $(shell if [ '$(APACHE_BASE_PATH)' = 'main' ]; then echo ''; else echo /$(APACHE_BASE_PATH); fi)
 DATAGEOADMINHOST ?= data.geo.admin.ch
+AWS_DEFAULT_REGION ?= eu-west-1
 SHORTENER_ALLOWED_DOMAINS := admin.ch, swisstopo.ch, bgdi.ch
 SHORTENER_ALLOWED_HOSTS ?=
+# A single table for dev, int and prod. Different name for each build test
+GEOADMIN_FILE_STORAGE_TABLE_NAME ?= geoadmin-file-storage
+GEOADMIN_FILE_STORAGE_TABLE_REGION ?= $(AWS_DEFAULT_REGION)
+GEOADMIN_FILE_STORAGE_BUCKET ?= public-dev-bgdi-ch
+GLSTYLES_STORAGE_TABLE_NAME ?= vectortiles-styles-storage
+GLSTYLES_STORAGE_TABLE_REGION ?= $(AWS_DEFAULT_REGION)
+GLSTYLES_STORAGE_BUCKET ?= $(GEOADMIN_FILE_STORAGE_BUCKET)
+SHORTENER_TABLE_NAME ?= shorturl
+SHORTENER_TABLE_REGION ?= $(AWS_DEFAULT_REGION)
+PYPI_URL ?= https://pypi.org/simple/
+GITHUB_LAST_COMMIT=$(shell curl -s  https://api.github.com/repos/geoadmin/mf-chsdi3/commits | jq -r '.[0].sha')
+DYNAMIC_TRANSLATION ?= 1
 
 # Last values
 KEEP_VERSION ?= 'false'
 LAST_VERSION := $(call lastvalue,version)
 VERSION := $(shell if [ '$(KEEP_VERSION)' = 'true' ] && [ '$(LAST_VERSION)' != '-none-' ]; \
-						 then echo $(LAST_VERSION); else python -c "print __import__('time').strftime('%s')"; fi)
+						 then echo $(LAST_VERSION); else date +'%s'; fi)
 LAST_MODWSGI_CONFIG := $(call lastvalue,modwsgi-config)
 LAST_SERVER_PORT := $(call lastvalue,server-port)
 LAST_CURRENT_DIRECTORY := $(call lastvalue,current-directory)
@@ -56,8 +74,14 @@ LAST_API_URL := $(call lastvalue,api-url)
 LAST_SHOP_URL := $(call lastvalue,shop-url)
 LAST_HOST := $(call lastvalue,host)
 LAST_GEOADMIN_FILE_STORAGE_BUCKET := $(call lastvalue,geoadmin-file-storage-bucket)
+LAST_GEOADMIN_FILE_STORAGE_TABLE_NAME := $(call lastvalue,geoadmin-file-storage-table-name)
+LAST_GEOADMIN_FILE_STORAGE_TABLE_REGION := $(call lastvalue,geoadmin-file-storage-table-region)
+LAST_GLSTYLES_STORAGE_TABLE_NAME := $(call lastvalue,glstyles-storage-table-name)
+LAST_GLSTYLES_STORAGE_TABLE_REGION := $(call lastvalue,glstyles-storage-table-region)
 LAST_PUBLIC_BUCKET_HOST  := $(call lastvalue,public-bucket-host)
-LAST_SHORTENER_ALLOWED_HOSTS := $(call lastvalue,allowed-hosts)
+LAST_SHORTENER_ALLOWED_HOSTS := $(call lastvalue,shortener-allowed-hosts)
+LAST_SHORTENER_TABLE_NAME := $(call lastvalue,shortener-table-name)
+LAST_SHORTENER_TABLE_REGION := $(call lastvalue,shortener-table-region)
 LAST_VECTOR_BUCKET := $(call lastvalue,vector-bucket)
 LAST_DATAGEOADMINHOST := $(call lastvalue,datageoadminhost)
 LAST_CMSGEOADMINHOST := $(call lastvalue,cmsgeoadminhost)
@@ -75,8 +99,12 @@ LAST_WSGI_PROCESSES := $(call lastvalue,wsgi-processes)
 LAST_WSGI_THREADS := $(call lastvalue,wsgi-threads)
 LAST_WSGI_APP := $(call lastvalue,wsgi-app)
 LAST_KML_TEMP_DIR := $(call lastvalue,kml-temp-dir)
+LAST_GIT_COMMIT_HASH ?= $(call lastvalue,git-commit-hash)
+LAST_GIT_COMMIT_SHORT ?= $(call lastvalue,git-commit-short)
+LAST_GITHUB_LAST_COMMIT := $(call lastvalue,github-last-commit)
+LAST_DYNAMIC_TRANSLATION := $(call lastvalue,dynamic-translation)
 
-PYTHON_FILES := $(shell find chsdi/* -path chsdi/static -prune -o -type f -name "*.py" -print)
+PYTHON_FILES := $(shell find chsdi/* tests/* -path chsdi/static -prune -o -path chsdi/lib/sphinxapi -prune -o -path tests/e2e -prune -o -type f -name "*.py" -print)
 TEMPLATE_FILES := $(shell find -type f -name "*.in" -print)
 
 # Commands
@@ -91,7 +119,7 @@ PYTHON_CMD := $(INSTALL_DIRECTORY)/bin/python
 SPHINX_CMD := $(INSTALL_DIRECTORY)/bin/sphinx-build
 
 # Linting rules
-PEP8_IGNORE := "E128,E221,E241,E251,E272,E305,E501,E711,E731"
+PEP8_IGNORE := "E128,E221,E241,E251,E272,E305,E501,E711,E731,W503,W504,W605"
 
 # E128: continuation line under-indented for visual indent
 # E221: multiple spaces before operator
@@ -101,6 +129,10 @@ PEP8_IGNORE := "E128,E221,E241,E251,E272,E305,E501,E711,E731"
 # E501: line length 79 per default
 # E711: comparison to None should be 'if cond is None:' (SQLAlchemy's filter syntax requires this ignore!)
 # E731: do not assign a lambda expression, use a def
+# TODO: break before or after, but decide
+# W503: line break before binary operator
+# W504: line break afterbinary operator
+# W605 invalid escape sequence
 
 # Colors
 RESET := $(shell tput sgr0)
@@ -111,8 +143,36 @@ GREEN := $(shell tput setaf 2)
 # We need GDAL which is hard to install in a venv, modify PYTHONPATH to use the
 # system wide version.
 GDAL_VERSION ?= 1.10.0
-PYTHON_VERSION := $(shell python --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1,2)
+
+ifndef USE_PYTHON3
+		override USE_PYTHON3 = 0
+endif
+
+ifeq ($(USE_PYTHON3), 1)
+		PYTHON_VERSION := 3.6.8
+build/python: local/bin/python3.6
+		mkdir -p build && touch build/python;
+else
+		PYTHON_VERSION := $(shell python2 --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1,2)
+build/python:
+		mkdir -p build && touch build/python;
+endif
 PYTHONPATH ?= .venv/lib/python${PYTHON_VERSION}/site-packages:/usr/lib64/python${PYTHON_VERSION}/site-packages
+
+PYTHON_BINDIR := $(shell dirname $(PYTHON_CMD))
+PYTHONHOME :=$(shell eval "cd $(PYTHON_BINDIR); pwd; cd > /dev/null")
+SYSTEM_PYTHON_CMD := $(CURRENT_DIR)/local/bin/python3
+
+.PHONY: python
+python: build/python
+		@echo "Python installed"
+
+local/bin/python3.6:
+		mkdir -p $(CURRENT_DIRECTORY)/local;
+		curl -z $(CURRENT_DIRECTORY)/local/Python-$(PYTHON_VERSION).tar.xz \
+				https://www.python.org/ftp/python/$(PYTHON_VERSION)/Python-$(PYTHON_VERSION).tar.xz \
+				-o $(CURRENT_DIRECTORY)/local/Python-$(PYTHON_VERSION).tar.xz;
+		cd $(CURRENT_DIRECTORY)/local && tar -xf Python-$(PYTHON_VERSION).tar.xz && Python-$(PYTHON_VERSION)/configure --prefix=$(CURRENT_DIRECTORY)/local/   --with-ensurepip=install --enable-optimizations && make altinstall
 
 .PHONY: help
 help:
@@ -124,6 +184,7 @@ help:
 	@echo "- serve              Serve the application with pserve"
 	@echo "- shell              Enter interactive shell with app loaded in the background"
 	@echo "- test               Launch the tests (no e2e tests)"
+	@echo "- testci             Lauch tests with reports (for CI)"
 	@echo "- teste2e            Launch end-to-end tests"
 	@echo "- lint               Run the linter"
 	@echo "- autolint           Run the autolinter"
@@ -137,12 +198,18 @@ help:
 	@echo "- deletebranchint    List deployed branches or delete a deployed branch on int (BRANCH_TO_DELETE=...)"
 	@echo "- updateapi          Updates geoadmin api source code (ol3 fork)"
 	@echo "- deploydev          Deploys master to dev (SNAPSHOT=true to also create a snapshot)"
+	@echo "- updatedev          Updates master to dev, if version has changed (with snapshot)"
 	@echo "- deployint          Deploys a snapshot to integration (SNAPSHOT=201512021146)"
 	@echo "- deployprod         Deploys a snapshot to production (SNAPSHOT=201512021146)"
 	@echo "- clean              Remove generated files"
 	@echo "- cleanall           Remove all the build artefacts"
+	@echo "- pythonclean        Remove all the build artefacts and the downloaded python version"
 	@echo
 	@echo "Variables:"
+	@echo "USE_PYTHON3          ${USE_PYTHON3}"
+	@echo "PYTHON_VERSION:      ${PYTHON_VERSION}"
+	@echo "PYTHON_CMD:          ${PYTHON_CMD}"
+	@echo "PYTHONPATH:          ${PYTHONPATH}"
 	@echo "APACHE_ENTRY_PATH:   ${APACHE_ENTRY_PATH}"
 	@echo "API_URL:             ${API_URL}"
 	@echo "WMSHOST:             ${WMSHOST}"
@@ -161,11 +228,14 @@ user:
 	source $(USER_SOURCE) && make all
 
 .PHONY: all
-all: setup chsdi/static/css/extended.min.css templates potomo rss lint fixrights
+all: setup chsdi/static/css/extended.min.css templates translate lint fixrights doc rss
 
 setup: .venv node_modules .venv/hooks
 
-templates: apache/wsgi.conf development.ini production.ini
+templates: apache/wsgi.conf development.ini production.ini chsdi/static/info.json
+
+
+
 
 .PHONY: dev
 dev:
@@ -189,11 +259,17 @@ shell:
 
 .PHONY: test
 test:
-	PYTHONPATH=${PYTHONPATH} ${NOSE_CMD} chsdi/tests/ -e .*e2e.*
+	PYTHONPATH=${PYTHONPATH} ${NOSE_CMD}  tests/ -e .*e2e.*
+
+.PHONY: testci
+testci:
+	mkdir -p junit-reports/{integration,functional}
+	PYTHONPATH=${PYTHONPATH} ${NOSE_CMD} --with-xunit --xunit-file=junit-reports/functional/nosetest.xml   tests/functional -e .*e2e.*
+	PYTHONPATH=${PYTHONPATH} ${NOSE_CMD} --with-xunit --xunit-file=junit-reports/integration/nosetest.xml  tests/integration -e .*e2e.*
 
 .PHONY: teste2e
 teste2e:
-	PYTHONPATH=${PYTHONPATH} ${NOSE_CMD} chsdi/tests/e2e/
+	PYTHONPATH=${PYTHONPATH} ${NOSE_CMD} tests/e2e/
 
 .PHONY: lint
 lint:
@@ -218,8 +294,13 @@ rss: doc chsdi/static/doc/build/releasenotes/index.html
 .PHONY: translate
 translate:
 	@echo "${GREEN}Updating translations...${RESET}";
-	source rc_dev && ${PYTHON_CMD} scripts/translation2po.py chsdi/locale/;
-	make potomo;
+	make pofiles potomo
+	
+.PHONY: pofiles
+pofiles:
+		@echo "${GREEN}Generating pofiles...${RESET}";
+		mkdir -p chsdi/locale/{de,fr,it,fi,en}/LC_MESSAGES;
+		source rc_dev && ${PYTHON_CMD} scripts/translation2po.py chsdi/locale/
 
 chsdi/locale/en/LC_MESSAGES/chsdi.po:
 chsdi/locale/en/LC_MESSAGES/chsdi.mo: chsdi/locale/en/LC_MESSAGES/chsdi.po
@@ -274,6 +355,15 @@ deploydev:
 		scripts/deploydev.sh; \
 	fi
 
+.PHONY: updatedev
+updatedev: .venv/last-github-last-commit
+		@if [ "${GITHUB_LAST_COMMIT}" == "${LAST_GITHUB_LAST_COMMIT}"   ]; then \
+				echo "No updating dev"; \
+		else \
+		    scripts/deploydev.sh -s; \
+		fi
+
+
 .PHONY: deployint
 deployint: guard-SNAPSHOT
 	scripts/deploysnapshot.sh $(SNAPSHOT) int $(NO_TESTS)
@@ -285,6 +375,18 @@ deployprod: guard-SNAPSHOT
 .PHONY: legends
 legends: guard-BODID guard-WMSHOST
 	source rc_user && scripts/downloadlegends.sh $(WMSHOST) $(BODID) $(WMSSCALELEGEND)
+
+chsdi/templates/info.json.mako:
+	@echo "${GREEN}info.json has changed${RESET}";
+chsdi/static/info.json:  chsdi/templates/info.json.mako
+		${PYTHON_CMD} ${MAKO_CMD} \
+		--var "version=$(VERSION)" \
+		--var "git_branch=$(GIT_BRANCH)" \
+		--var "git_commit_short=$(GIT_COMMIT_SHORT)" \
+		--var "git_commit_date=$(GIT_COMMIT_DATE)" \
+		--var "git_commit_hash=$(GIT_COMMIT_HASH)" \
+		--var "python_version=$(PYTHON_VERSION)" \
+		--var "build_date=$(CURRENT_DATE)"  $< > $@
 
 rc_branch.mako:
 	@echo "${GREEN}Branch has changed${RESET}";
@@ -354,7 +456,13 @@ apache/wsgi.conf: apache/wsgi.conf.in \
 		--var "wsgi_app=$(WSGI_APP)" \
 		--var "kml_temp_dir=$(KML_TEMP_DIR)" $< > $@
 
-development.ini.in:
+
+app.log:
+	touch $@
+	chmod a+rw $@
+
+
+development.ini.in: app.log
 	@echo "${GREEN}Template file development.ini.in has changed${RESET}";
 development.ini: development.ini.in \
 	               .venv/last-version \
@@ -362,6 +470,7 @@ development.ini: development.ini.in \
 	@echo "${GREEN}Creating development.ini....${RESET}";
 	${MAKO_CMD} \
 		--var "app_version=$(VERSION)" \
+		--var "current_directory=$(CURRENT_DIRECTORY)" \
 		--var "server_port=$(SERVER_PORT)" $< > $@
 
 production.ini.in:
@@ -387,6 +496,10 @@ production.ini: production.ini.in \
                 .venv/last-kml-temp-dir \
                 .venv/last-http-proxy \
                 .venv/last-geoadmin-file-storage-bucket \
+                .venv/last-geoadmin-file-storage-table-name \
+                .venv/last-geoadmin-file-storage-table-region \
+								.venv/last-glstyles-storage-table-name \
+								.venv/last-glstyles-storage-table-region \
                 .venv/last-public-bucket-host \
                 .venv/last-shortener-allowed-hosts \
                 .venv/last-vector-bucket \
@@ -395,6 +508,9 @@ production.ini: production.ini.in \
                 .venv/last-linkeddatahost \
                 .venv/last-opentrans-api-key \
                 .venv/last-shortener-allowed-domains \
+                .venv/last-shortener-table-name \
+                .venv/last-shortener-table-region \
+								.venv/last-dynamic-translation \
                 guard-OPENTRANS_API_KEY
 	@echo "${GREEN}Creating production.ini...${RESET}";
 	${MAKO_CMD} \
@@ -418,13 +534,20 @@ production.ini: production.ini.in \
 		--var "kml_temp_dir=$(KML_TEMP_DIR)" \
 		--var "http_proxy=$(HTTP_PROXY)" \
 		--var "geoadmin_file_storage_bucket=$(GEOADMIN_FILE_STORAGE_BUCKET)" \
+		--var "geoadmin_file_storage_table_region=$(GEOADMIN_FILE_STORAGE_TABLE_REGION)" \
+		--var "geoadmin_file_storage_table_name=$(GEOADMIN_FILE_STORAGE_TABLE_NAME)" \
+		--var "glstyles_storage_table_name=$(GLSTYLES_STORAGE_TABLE_NAME)" \
+		--var "glstyles_storage_table_region=$(GLSTYLES_STORAGE_TABLE_REGION)" \
 		--var "public_bucket_host=$(PUBLIC_BUCKET_HOST)" \
 		--var "shortener_allowed_hosts=$(SHORTENER_ALLOWED_HOSTS)" \
+		--var "shortener_table_name=$(SHORTENER_TABLE_NAME)" \
+		--var "shortener_table_region=$(SHORTENER_TABLE_REGION)" \
 		--var "vector_bucket=$(VECTOR_BUCKET)" \
 		--var "datageoadminhost=$(DATAGEOADMINHOST)" \
 		--var "cmsgeoadminhost=$(CMSGEOADMINHOST)" \
 		--var "linkeddatahost=$(LINKEDDATAHOST)" \
 		--var "opentrans_api_key=$(OPENTRANS_API_KEY)" \
+		--var "dynamic_translation=$(DYNAMIC_TRANSLATION)" \
 		--var "shortener_allowed_domains=$(SHORTENER_ALLOWED_DOMAINS)" $< > $@
 
 .venv/hooks: .venv/bin/git-secrets ./scripts/install-git-hooks.sh
@@ -434,21 +557,29 @@ production.ini: production.ini.in \
 
 requirements.txt:
 	@echo "${GREEN}File requirements.txt has changed${RESET}";
+
+ifeq ($(USE_PYTHON3), 1)
+.venv: requirements.txt
+		test -d "$(INSTALL_DIRECTORY)" || local/bin/python3.6 -m venv $(INSTALL_DIRECTORY); \
+		${PIP_CMD} install --upgrade pip==19.2.3 setuptools --index-url ${PYPI_URL} ; 
+		${PIP_CMD} install --index-url ${PYPI_URL}  -e .
+else
 .venv: requirements.txt
 	@echo "${GREEN}Setting up virtual environement...${RESET}";
 	@if [ ! -d $(INSTALL_DIRECTORY) ]; \
 	then \
-		virtualenv $(INSTALL_DIRECTORY); \
-		${PIP_CMD} install -U pip setuptools; \
+		virtualenv -p /usr/bin/python2  $(INSTALL_DIRECTORY); \
+		${PIP_CMD} install --upgrade pip==19.2.3 setuptools==44.0.0 enum34==1.1.6 --index-url ${PYPI_URL} ; \
 	fi
-	${PIP_CMD} install --find-links local_eggs/ -e .
+	${PIP_CMD} install --index-url ${PYPI_URL} -e .
+endif
 
 .venv/bin/git-secrets: .venv
 	@echo "${GREEN}Installing git secrets${RESET}";
 	if [ ! -d ".git" ]; then git init; fi
 	rm -rf .venv/git-secrets
 	git clone https://github.com/awslabs/git-secrets .venv/git-secrets
-	cd .venv/git-secrets && make install PREFIX=..
+	cd .venv/git-secrets  && git reset --hard 635895a8d1b7c976ac9794cef420f8dc111a24d4 && make install PREFIX=..
 	(git config --local --get-regexp secret && git config --remove-section secrets) || cd
 	.venv/bin/git-secrets --register-aws
 
@@ -456,7 +587,7 @@ package.json:
 	@echo "${GREEN}File package.json has changed${RESET}";
 node_modules: package.json
 	@echo "${GREEN}Installing node packages...${RESET}";
-	npm install
+	npm install --production
 	cp -f node_modules/jquery/dist/jquery.min.js chsdi/static/js/jquery.min.js
 	cp -f node_modules/blueimp-gallery/js/blueimp-gallery.min.js chsdi/static/js/blueimp-gallery.min.js
 	cp -f node_modules/d3/d3.min.js chsdi/static/js/d3.min.js
@@ -469,6 +600,8 @@ chsdi/static/css/extended.min.css: chsdi/static/less/extended.less
 	@echo "${GREEN}Generating new css file...${RESET}";
 	node_modules/.bin/lessc -ru --clean-css $< $@
 
+.venv/last-github-last-commit::
+	$(call cachelastvariable,$@,$(GITHUB_LAST_COMMIT),$(LAST_GITHUB_LAST_COMMIT),github-last-commit)
 
 # application.wsg
 .venv/last-modwsgi-config::
@@ -536,11 +669,29 @@ chsdi/static/css/extended.min.css: chsdi/static/less/extended.less
 .venv/last-geoadmin-file-storage-bucket::
 	$(call cachelastvariable,$@,$(GEOADMIN_FILE_STORAGE_BUCKET),$(LAST_GEOADMIN_FILE_STORAGE_BUCKET),geoadmin-file-storage-bucket)
 
+.venv/last-geoadmin-file-storage-table-name::
+	$(call cachelastvariable,$@,$(GEOADMIN_FILE_STORAGE_TABLE_NAME),$(LAST_GEOADMIN_FILE_STORAGE_TABLE_NAME),geoadmin-file-storage-table-name)
+
+.venv/last-geoadmin-file-storage-table-region::
+	$(call cachelastvariable,$@,$(GEOADMIN_FILE_STORAGE_TABLE_REGION),$(LAST_GEOADMIN_FILE_STORAGE_TABLE_REGION),geoadmin-file-storage-table-region)
+
+.venv/last-glstyles-storage-table-name::
+	$(call cachelastvariable,$@,$(GLSTYLES_STORAGE_TABLE_NAME),$(LAST_GLSTYLES_STORAGE_TABLE_NAME),glstyles-storage-table-name)
+
+.venv/last-glstyles-storage-table-region::
+	$(call cachelastvariable,$@,$(GLSTYLES_STORAGE_TABLE_REGION),$(LAST_GLSTYLES_STORAGE_TABLE_REGION),glstyles-storage-table-region)
+
 .venv/last-public-bucket-host::
 	$(call cachelastvariable,$@,$(PUBLIC_BUCKET_HOST),$(LAST_PUBLIC_BUCKET_HOST),public-bucket-host)
 
 .venv/last-shortener-allowed-hosts::
 	$(call cachelastvariable,$@,$(SHORTENER_ALLOWED_HOSTS),$(LAST_SHORTENER_ALLOWED_HOSTS),shortener-allowed-hosts)
+
+.venv/last-shortener-table-name::
+	$(call cachelastvariable,$@,$(SHORTENER_TABLE_NAME),$(LAST_SHORTENER_TABLE_NAME),shortener-table-name)
+
+.venv/last-shortener-table-region::
+	$(call cachelastvariable,$@,$(SHORTENER_TABLE_REGION),$(LAST_SHORTENER_TABLE_REGION),shortener-table-region)
 
 .venv/last-vector-bucket::
 	$(call cachelastvariable,$@,$(VECTOR_BUCKET),$(LAST_VECTOR_BUCKET),vector-bucket)
@@ -559,6 +710,9 @@ chsdi/static/css/extended.min.css: chsdi/static/less/extended.less
 
 .venv/last-shortener-allowed-domains::
 	$(call cachelastvariable,$@,$(SHORTENER_ALLOWED_DOMAINS),$(LAST_SHORTENER_ALLOWED_DOMAINS),shortener-allowed-domains)
+
+.venv/last-dynamic-translation::
+	$(call cachelastvariable,$@,$(DYNAMIC_TRANSLATION),$(LAST_DYNAMIC_TRANSLATION),dynamic-translation)
 
 # wsgi.conf.in
 .venv/last-robots-file::
@@ -611,9 +765,12 @@ clean:
 	rm -rf development.ini
 	rm -rf apache/wsgi.conf
 	rm -rf rc_branch
+	rm -rf app.log
 	rm -rf apache/application.wsgi
 	rm -rf deploy/deploy-branch.cfg
 	rm -rf deploy/conf/00-branch.conf
+	rm -f  chsdi/static/info.json
+	rm -rf junit_report
 
 .PHONY: cleanall
 cleanall: clean
@@ -621,12 +778,16 @@ cleanall: clean
 	rm -rf node_modules
 	rm -rf .git/hooks/*
 	rm -rf chsdi/static/css/extended.min.css
-	rm -rf chsdi/locale/en/LC_MESSAGES/chsdi.mo
-	rm -rf chsdi/locale/fr/LC_MESSAGES/chsdi.mo
-	rm -rf chsdi/locale/de/LC_MESSAGES/chsdi.mo
-	rm -rf chsdi/locale/fi/LC_MESSAGES/chsdi.mo
-	rm -rf chsdi/locale/it/LC_MESSAGES/chsdi.mo
+	rm -rf chsdi/locale/en/LC_MESSAGES/chsdi.*
+	rm -rf chsdi/locale/fr/LC_MESSAGES/chsdi.*
+	rm -rf chsdi/locale/de/LC_MESSAGES/chsdi.*
+	rm -rf chsdi/locale/fi/LC_MESSAGES/chsdi.*
+	rm -rf chsdi/locale/it/LC_MESSAGES/chsdi.*
 	rm -rf chsdi/static/js/jquery.min.js
 	rm -rf chsdi/static/js/blueimp-gallery.min.js
 	rm -rf chsdi/static/js/d3.min.js
 	rm -rf chsdi/static/js/d3-tip.js
+
+.PHONY: pythonclean
+pythonclean: cleanall
+	rm -rf local

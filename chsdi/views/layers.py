@@ -2,7 +2,9 @@
 
 import os
 import decimal
+import six
 import datetime
+from itertools import chain
 
 
 from pyramid.view import view_config
@@ -47,8 +49,11 @@ def layers_config(request):
     params = BaseLayersValidation(request)
     query = params.request.db.query(LayersConfig)
     layers = {}
+    # Python 2/3
     for layer in get_layers_config_for_params(params, query, LayersConfig):
-        layers = dict(layers.items() + layer.items())
+        # layers = dict(list(layers.items()) + list(layer.items()))
+        layers = dict(chain(layers.items(), layer.items()))
+
     return layers
 
 
@@ -82,6 +87,8 @@ def legend(request):
     )
     if params.cbName is None:
         return response
+    if six.PY3:
+        return response.body.decode('utf8')
     return response.body
 
 
@@ -155,21 +162,26 @@ def faqlist(request):
     chargeableLayers = []
     # Free layers
     notChargeableLayers = []
+    # queryable layer (filtering with where and layerDefs)
+    queryableLayers = []
 
     query = params.request.db.query(LayersConfig)
     for layer in get_layers_config_for_params(params, query, LayersConfig):
-        k = layer.keys().pop()
-        l = layer.values().pop()
-        if 'parentLayerId' not in l and not k.endswith('_3d'):
+        # Python2/3
+        k = list(layer.keys()).pop()
+        lyr = list(layer.values()).pop()
+        if 'parentLayerId' not in lyr and not k.endswith('_3d'):
             if k not in translations:
                 translations[k] = request.translate(k)
-            if 'tooltip' in l and l['tooltip']:
+            if 'tooltip' in lyr and lyr['tooltip']:
                 tooltipLayers.append(k)
-            if 'searchable' in l and l['searchable']:
+            if 'queryableAttributes' in lyr and lyr['queryableAttributes']:
+                queryableLayers.append(k)
+            if 'searchable' in lyr and lyr['searchable']:
                 searchableLayers.append(k)
-            if 'chargeable' in l and l['chargeable']:
+            if 'chargeable' in lyr and lyr['chargeable']:
                 chargeableLayers.append(k)
-            if 'chargeable' in l and not l['chargeable']:
+            if 'chargeable' in lyr and not lyr['chargeable']:
                 notChargeableLayers.append(k)
 
     return {
@@ -177,7 +189,8 @@ def faqlist(request):
         'tooltipLayers': sorted(tooltipLayers),
         'searchableLayers': sorted(searchableLayers),
         'chargeableLayers': sorted(chargeableLayers),
-        'notChargeableLayers': sorted(notChargeableLayers)
+        'notChargeableLayers': sorted(notChargeableLayers),
+        'queryableLayers': sorted(queryableLayers)
     }
 
 

@@ -2,7 +2,9 @@
 
 from pyramid.view import view_config
 import pyramid.httpexceptions as exc
-import boto.dynamodb2.exceptions as boto_exc
+
+import boto3.exceptions as boto_exc
+from boto3.dynamodb.conditions import Key
 
 import time
 
@@ -17,15 +19,18 @@ def _add_item(table, url):
         # Magic number relates to the initial epoch
         t = int(time.time() * 1000) - 1000000000000
         url_short = '%x' % t
+        now = time.localtime()
         try:
             table.put_item(
-                data={
+                Item={
                     'url_short': url_short,
                     'url': url,
-                    'timestamp': time.strftime('%Y-%m-%d %X', time.localtime())
+                    'timestamp': time.strftime('%Y-%m-%d %X', now),
+                    'epoch': time.strftime('%s', now)
                 }
             )
-        except boto_exc.ProvisionedThroughputExceededException as e:
+        except boto_exc.Boto3Error as e:
+            # TODO : find boto3 equivalent for ProvisionedThroughputExceededException
             raise exc.HTTPInternalServerError('Write units exceeded: %s' % e)
         except Exception as e:
             raise exc.HTTPInternalServerError('Error during put item %s' % e)
@@ -35,11 +40,14 @@ def _add_item(table, url):
 
 
 def _get_url_short(table, url):
-    row = table.query_2(index='UrlIndex', url__eq=url)
+
+    response  = table.query(
+        IndexName="UrlIndex",
+        KeyConditionExpression=Key('url').eq(url),
+    )
     try:
-        item = next(row)
-        return item['url_short']
-    except:
+        return response['Items'][0]['url_short']
+    except Exception:
         return None
 
 
@@ -51,13 +59,15 @@ def shortener(request):
         # Index restriction in DynamoDB
         url_short = 'toolong'
     else:  # pragma: no cover
-        url_short = check_url(url, request.registry.settings)
+        settings = request.registry.settings
+        url_short = check_url(url, settings)
+        table_name = settings.get('shortener.table_name')
+        aws_region = settings.get('shortener.table_region')
         # DynamoDB v2 high-level abstraction
         try:
-            table = get_dynamodb_table(table_name='shorturl')
+            table = get_dynamodb_table(table_name=table_name, region=aws_region)
         except Exception as e:
             raise exc.HTTPInternalServerError('Error during connection %s' % e)
-
         url_short = _add_item(table, url)
 
     # Use env specific URLs
@@ -77,16 +87,23 @@ def shorten_redirect(request):
     if url_short == 'toolong':
         raise exc.HTTPFound(location='http://map.geo.admin.ch')
 
-    table = get_dynamodb_table(table_name='shorturl')
+    settings = request.registry.settings
+    table_name = settings.get('shortener.table_name')
+    aws_region = settings.get('shortener.table_region')
 
     try:
-        url_short = table.get_item(url_short=url_short)
-        url = url_short.get('url')
-    except boto_exc.ItemNotFound as e:
-        raise exc.HTTPNotFound('This short url doesn\'t exist: s.geo.admin.ch/%s Error is: %s' % (url_short, e))
-    except boto_exc.ProvisionedThroughputExceededException as e:  # pragma: no cover
-        raise exc.HTTPInternalServerError('Read units exceeded: %s' % e)
+        table = get_dynamodb_table(table_name=table_name, region=aws_region)
+    except Exception as e:
+        raise exc.HTTPInternalServerError('Error during connection %s' % e)
+
+    try:
+        response = table.query(
+            KeyConditionExpression=Key('url_short').eq(url_short)
+        )
+        url = response['Items'][0]['url'] if len(response['Items']) > 0 else None
+
     except Exception as e:  # pragma: no cover
         raise exc.HTTPInternalServerError('Unexpected internal server error: %s' % e)
-
+    if url is None:
+        raise exc.HTTPNotFound('This short url doesn\'t exist: s.geo.admin.ch/%s' % url_short)
     raise exc.HTTPMovedPermanently(location=url)

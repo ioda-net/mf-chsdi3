@@ -2,8 +2,8 @@
 
 from pyramid.httpexceptions import HTTPBadRequest
 
-from chsdi.lib.helpers import float_raise_nan, shift_to
-from chsdi.lib.validation import MapNameValidation
+from chsdi.lib.helpers import float_raise_nan, shift_to, ilen
+from chsdi.lib.validation import MapNameValidation, SUPPORTED_OUTPUT_SRS
 
 MAX_SPHINX_INDEX_LENGTH = 63
 MAX_SEARCH_TERMS = 10
@@ -14,7 +14,7 @@ class SearchValidation(MapNameValidation):
     def __init__(self, request):
         super(SearchValidation, self).__init__()
         self.availableLangs = request.registry.settings['available_languages'].split(' ')
-        self.locationTypes = [u'locations', u'locations_preview']
+        self.locationTypes = [u'locations']
         self.layerTypes = [u'layers']
         self.featureTypes = [u'featuresearch']
         self.supportedTypes = self.locationTypes + self.layerTypes + self.featureTypes
@@ -83,7 +83,7 @@ class SearchValidation(MapNameValidation):
     @featureIndexes.setter
     def featureIndexes(self, value):
         if value is not None and value != '':
-            value = value.replace('.', '_')
+            value = value.replace('.', '_').replace('-', '_')
             self._featureIndexes = [idx[:MAX_SPHINX_INDEX_LENGTH] for idx in value.split(',')]
 
     @timeEnabled.setter
@@ -103,8 +103,9 @@ class SearchValidation(MapNameValidation):
             raise HTTPBadRequest("Please provide a search text")
         searchTextList = value.split(' ')
         # Remove empty strings
-        searchTextList = filter(None, searchTextList)
-        if len(searchTextList) > MAX_SEARCH_TERMS:
+        # Python2/3
+        searchTextList = list(filter(None, searchTextList))
+        if ilen(searchTextList) > MAX_SEARCH_TERMS:
             raise HTTPBadRequest("The searchText parameter can not contain more than 10 words")
         self._searchText = searchTextList
 
@@ -115,7 +116,8 @@ class SearchValidation(MapNameValidation):
             if len(values) != 4:
                 raise HTTPBadRequest("Please provide 4 coordinates in a comma separated list")
             try:
-                values = map(float_raise_nan, values)
+                # Python 2/3
+                values = list(map(float_raise_nan, values))
             except ValueError:
                 raise HTTPBadRequest("Please provide numerical values for the parameter bbox")
             if self._srid == 2056:
@@ -160,7 +162,7 @@ class SearchValidation(MapNameValidation):
 
     @srid.setter
     def srid(self, value):
-        if value in ('2056', '21781'):
+        if value in map(str, SUPPORTED_OUTPUT_SRS):
             self._srid = int(value)
         elif value is not None:
             raise HTTPBadRequest('Unsupported spatial reference %s' % value)

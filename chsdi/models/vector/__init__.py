@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-
 import re
 import geojson
 import esrijson
 import datetime
 import decimal
+import six
 from pyramid.threadlocal import get_current_registry
-from chsdi.lib.exceptions import HTTPBandwidthLimited
 from chsdi.models.types import GeometryChsdi
+from chsdi.lib.helpers import transform_round_geometry
 from shapely.geometry import box
 from sqlalchemy.sql import func
 from sqlalchemy.orm.util import class_mapper
@@ -15,12 +15,22 @@ from sqlalchemy.orm.properties import ColumnProperty
 from geoalchemy2.elements import WKBElement
 from geoalchemy2.shape import to_shape
 
+if six.PY3:
+    buffer = memoryview
 
 Geometry2D = GeometryChsdi(geometry_type='GEOMETRY', dimension=2, srid=2056)
-Geometry3D = GeometryChsdi(geometry_type='GEOMETRY', dimension=3, srid=2056)
+Geometry3D = GeometryChsdi(geometry_type='GEOMETRYZ', dimension=3, srid=2056)
+
+
+MAX_FEATURE_GEOMETRY_SIZE = 1e6
+
+DEFAULT_OUPUT_SRID = 21781
 
 
 def get_resolution(imageDisplay, mapExtent):
+    # TODO: Python2/3
+    if not isinstance(imageDisplay, list):
+        imageDisplay = list(imageDisplay)
     bounds = mapExtent.bounds
     map_meter_width = abs(bounds[0] - bounds[2])
     map_meter_height = abs(bounds[1] - bounds[3])
@@ -30,13 +40,17 @@ def get_resolution(imageDisplay, mapExtent):
 
 
 def get_scale(imageDisplay, mapExtent):
+    # TODO: Python2/3
+    if not isinstance(imageDisplay, list):
+        imageDisplay = list(imageDisplay)
     resolution = get_resolution(imageDisplay, mapExtent)
     return resolution * 39.37 * imageDisplay[2]
 
 
 def has_buffer(imageDisplay, mapExtent, tolerance):
-    return bool(imageDisplay and mapExtent and tolerance is not None and
-        all(val != 0 for val in imageDisplay) and mapExtent.area != 0)
+    return bool(imageDisplay is not None and mapExtent is not None
+            and tolerance is not None
+        and all(val != 0 for val in imageDisplay) and mapExtent.area != 0)
 
 
 def get_tolerance_meters(imageDisplay, mapExtent, tolerance):
@@ -65,6 +79,7 @@ class Vector(object):
     def __read__(self):
         id = None
         geom = None
+        bbox = None
         properties = {}
         for p in class_mapper(self.__class__).iterate_properties:
             if isinstance(p, ColumnProperty):
@@ -74,49 +89,60 @@ class Vector(object):
                 val = getattr(self, p.key)
                 if col.primary_key:
                     id = val
-                elif (isinstance(col.type, GeometryChsdi) and
-                      col.name == self.geometry_column_to_return().name):
-                    if hasattr(self, '_shape'):
+                elif (isinstance(col.type, GeometryChsdi)
+                      and col.name == self.geometry_column_to_return().name):
+                    if hasattr(self, '_shape') and \
+                            len(self._shape) < MAX_FEATURE_GEOMETRY_SIZE:
                         geom = self._shape
-                    elif val is not None:
-                        if len(val.data) > 1000000:
-                            raise HTTPBandwidthLimited(
-                                'Feature ID %s: is too large' % self.id)
+                    elif val is not None and \
+                            (len(val.data) < MAX_FEATURE_GEOMETRY_SIZE or
+                            self.ignore_max_feature_geometry_size_column):
                         geom = to_shape(val)
-                elif (not col.foreign_keys and
-                      not isinstance(col.type, GeometryChsdi)):
+                    try:
+                        bbox = geom.bounds
+                    except Exception:
+                        pass
+                elif (not col.foreign_keys
+                      and not isinstance(col.type, GeometryChsdi)):
                     properties[p.key] = val
         properties = self.insert_label(properties)
-        bbox = None
-        try:
-            bbox = geom.bounds
-        except:
-            pass
-
         return id, geom, properties, bbox
+
+    def transform_shape(self, geom, srid_to, rounding=True):
+        if geom is None:
+            return geom
+        return transform_round_geometry(geom, self.srid, srid_to, rounding=rounding)
 
     @property
     def srid(self):
         return self.geometry_column().type.srid
 
-    def to_esrijson(self, trans, returnGeometry):
+    def to_esrijson(self, trans, returnGeometry, srid=DEFAULT_OUPUT_SRID):
         if returnGeometry:
             id, geom, properties, bbox = self.__read__()
+            geom = self.transform_shape(geom, srid, rounding=True)
+            bbox = self.transform_shape(bbox, srid, rounding=True)
+
             return esrijson.Feature(id=id,
                                    featureId=id,  # Duplicate id for backward compat...
                                    geometry=geom,
-                                   wkid=self.geometry_column().type.srid_out,
+                                   wkid=srid,  # self.geometry_column().type.srid_out,
                                    attributes=properties,
                                    bbox=bbox,
                                    layerBodId=self.__bodId__,
                                    layerName=trans(self.__bodId__))
         return self._no_geom_template(trans)
 
-    def to_geojson(self, trans, returnGeometry):
+    def to_geojson(self, trans, returnGeometry, srid=DEFAULT_OUPUT_SRID):
         if returnGeometry:
             id, geom, properties, bbox = self.__read__()
+            geom = self.transform_shape(geom, srid, rounding=True)
+            bbox = self.transform_shape(bbox, srid, rounding=True)
+
+            # TODO: no need to reproject geometry?
             return geojson.Feature(id=id,
                                    featureId=id,  # Duplicate id for backward compat...
+                                   type="Feature",
                                    geometry=geom,
                                    properties=properties,
                                    bbox=bbox,
@@ -140,6 +166,10 @@ class Vector(object):
     def geometry_column_to_return(cls):
         geom_column_name = cls.__returnedGeometry__ if hasattr(cls, '__returnedGeometry__') else 'the_geom'
         return cls.__mapper__.columns[geom_column_name]
+
+    @property
+    def ignore_max_feature_geometry_size_column(cls):
+        return cls.__ignore_max_feature_geometry_size__ if hasattr(cls, '__ignore_max_feature_geometry_size__') else False
 
     @classmethod
     def primary_key_column(cls):
@@ -221,12 +251,6 @@ class Vector(object):
                     queryable_attributes.append(fallback_match)
 
         return queryable_attributes
-
-    @classmethod
-    def set_geometry_srid_out(cls, srid_out):
-        for col in cls.__mapper__.columns:
-            if isinstance(col.type, GeometryChsdi):
-                col.type.srid_out = srid_out
 
     def get_orm_columns_names(self, exclude_pkey=True):
         keys_to_exclude = []

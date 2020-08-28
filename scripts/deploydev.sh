@@ -25,6 +25,11 @@ then
   fi
 fi
 
+# Be a bit more verbose (for cronjobs)
+echo "Starting 'mf-chsdi3' deploy on $(hostname) for branch <${GITBRANCH}>"
+echo "on $(date +'%Y-%m-%d %T')"
+
+
 # Backup current project
 if mv -f $DEPLOYDIR $TEMPDIR; then
   echo "Project backup in $TEMPDIR."
@@ -76,15 +81,8 @@ echo "Deployed branch $GITBRANCH to dev main."
 
 # create a snapshot
 if [ $CREATE_SNAPSHOT == 'true' ]; then
-  # Make sure translations are updated
+  # Generate the .po files
   make translate
-  TRANSLATIONS_DIFF=$(git diff)
-  if [ ! -z "$TRANSLATIONS_DIFF" ]; then
-    echo $TRANSLATIONS_DIFF
-    echo "Some translations haven't been updated yet, please update the translations..."
-    echo "Aborting..."
-    exit 1
-  fi
 
   # Deploying snapshot to snapshot directory
   sudo -u deploy deploy -c deploy/deploy.cfg $SNAPSHOTDIR

@@ -2,6 +2,7 @@
 
 import re
 import geojson
+import six
 from gatilegrid.grid import Grid
 
 from pyramid.view import view_config
@@ -20,14 +21,18 @@ from chsdi.lib.validation.features import HtmlPopupServiceValidation, ExtendedHt
 from chsdi.lib.validation.find import FindServiceValidation
 from chsdi.lib.validation.identify import IdentifyServiceValidation
 from chsdi.lib.validation.geometryservice import GeometryServiceValidation
-from chsdi.lib.helpers import format_query, decompress_gzipped_string, center_from_box2d, make_geoadmin_url, shift_to
+from chsdi.lib.helpers import format_query, decompress_gzipped_string, center_from_box2d, make_geoadmin_url, shift_to, unnacent_where_text
 from chsdi.lib.filters import full_text_search
-from chsdi.models.clientdata_dynamodb import get_bucket
+from chsdi.models.clientdata_dynamodb import get_file_from_bucket
 from chsdi.models import models_from_bodid, perimeter_models_from_bodid, queryable_models_from_bodid, oereb_models_from_bodid
 from chsdi.models.bod import OerebMetadata, get_bod_model
 from chsdi.models.vector import get_scale, get_resolution, has_buffer
 from chsdi.models.grid import get_grid_spec, get_grid_layer_properties
 from chsdi.views.layers import get_layer, get_layers_metadata_for_params
+
+
+import logging
+log = logging.getLogger(__name__)
 
 
 MAX_FEATURES = 201
@@ -107,7 +112,8 @@ def _get_feature_info_for_popup(request, params, isExtended=False, isIframe=Fals
         'fullName': layer.get('fullName'),
         'vector_model': vector_model,
         'isExtended': isExtended,
-        'isIframe': isIframe
+        'isIframe': isIframe,
+        'time': params.time
     })
     return options
 
@@ -119,6 +125,9 @@ def _prepare_popup_response(params, request, isExtended=False, isIframe=False):
 
     if params.cbName is None:
         return response
+    # Python2/3
+    if six.PY3:
+        return response.body.decode('utf8')
     return response.body
 
 
@@ -194,12 +203,16 @@ def _identify_oereb(request):
 def _identify(request):
     params = IdentifyServiceValidation(request)
     response = {'results': []}
+    scale = None
     # Determine layer types
     # Grid layers are serverless
     layersDB = []
     layersGrid = []
-    isScaleDependent = has_buffer(params.imageDisplay, params.mapExtent, params.tolerance)
-    scale = get_scale(params.imageDisplay, params.mapExtent) if isScaleDependent else None
+    # By definition, if both mapExtent and imageDisplay are null, scale is not relevant
+    if params.imageDisplay is not None and all(i > 0 for i in params.imageDisplay) \
+            and params.mapExtent is not None and all(j > 0 for j in params.mapExtent.bounds):
+        isScaleDependent = has_buffer(params.imageDisplay, params.mapExtent, params.tolerance)
+        scale = get_scale(params.imageDisplay, params.mapExtent) if isScaleDependent else None
     if params.layers == 'all':
         model = get_bod_model(params.lang)
         query = params.request.db.query(model)
@@ -257,32 +270,38 @@ def _identify_grid(params, layerBodIds):
         pointCoordinates = center_from_box2d(bbox)
     else:
         pointCoordinates = list(list(geometry.coords)[0])
-    if params.srid == 2056:
-        pointCoordinates = shift_to(pointCoordinates, 21781)
     bucketName = params.request.registry.settings['vector_bucket']
-    bucket = get_bucket(bucketName)
     for layer in layerBodIds:
-        [layerBodId, gridSpec] = next(layer.iteritems())
+        [layerBodId, gridSpec] = next(six.iteritems(layer))
         params.layerId = layerBodId
         layerProperties = get_grid_layer_properties(layerBodId)
         timestamp = layerProperties.get('timestamp')
         grid = Grid(gridSpec.get('extent'),
                     gridSpec.get('resolutionX'),
                     gridSpec.get('resolutionY'))
+        if params.srid == 2056 and gridSpec.get('srid') == '21781':
+            pointCoordinates = shift_to(pointCoordinates, 21781)
+        elif params.srid == 21781 and gridSpec.get('srid') == '2056':
+            pointCoordinates = shift_to(pointCoordinates, 2056)
         [col, row] = grid.cellAddressFromPointCoordinate(pointCoordinates)
         if col is not None and row is not None:
-            feature, none = _get_feature_grid(col, row, timestamp, grid, bucket, params)
-            if feature and not none:
+            feature, none = _get_feature_grid(col, row, timestamp, grid, bucketName, params)
+            if feature is not None:
                 feature['bbox'] = grid.cellExtent(col, row)
                 # For some reason we define the id twice..
                 feature['featureId'] = feature['id']
                 feature['properties']['label'] = feature['id']
-                if params.srid == 2056:
+                if params.srid == 2056 and gridSpec.get('srid') == '21781':
                     feature['bbox'] = shift_to(feature['bbox'], 2056)
-                    # Coords are always simple polygons
                     coords = feature['geometry']['coordinates']
                     coords = [[shift_to(c, 2056) for c in coords[0]]]
                     feature['geometry']['coordinates'] = coords
+                if params.srid == 21781 and gridSpec.get('srid') == '2056':
+                    feature['bbox'] = shift_to(feature['bbox'], 21781)
+                    coords = feature['geometry']['coordinates']
+                    coords = [[shift_to(c, 21781) for c in coords[0]]]
+                    feature['geometry']['coordinates'] = coords
+
                 features.append(feature)
 
     return features
@@ -299,7 +318,12 @@ def _identify_db(params, layerBodIds):
         try:
             feature = next(feature_gen)
         except InternalError as e:
-            raise exc.HTTPBadRequest('Your request generated the following database error: %s' % e)
+            # Note: in order not to expose too much details about internal
+            # db structure, we only return the title of the error and not details
+            # about table names and the like
+            # Python2/3
+            log.error("Database error while reading features: {}".format(e))
+            raise exc.HTTPBadRequest('Your request generated a database errorwhile reading features')
         except StopIteration:
             break
         else:
@@ -337,7 +361,6 @@ def _get_features(params, extended=False, process=True):
     for featureId in featureIds:
         if gridSpec:
             bucketName = params.request.registry.settings['vector_bucket']
-            bucket = get_bucket(bucketName)
             # By convention
             if featureId.find('_') == -1:
                 raise exc.HTTPBadRequest('Unexpected id formatting')
@@ -347,7 +370,7 @@ def _get_features(params, extended=False, process=True):
                         gridSpec.get('resolutionY'))
             layerProperties = get_grid_layer_properties(params.layerId)
             timestamp = layerProperties.get('timestamp')
-            yield _get_feature_grid(col, row, timestamp, grid, bucket, params)
+            yield _get_feature_grid(col, row, timestamp, grid, bucketName, params)
         else:
             yield _get_feature_db(featureId, params, models, process=process)
 
@@ -370,6 +393,7 @@ def _get_feature_db(featureId, params, models, process=True):
     feature = None
     # One layer can have several models
     for model in models:
+        # return a sqlalchemy.util._collections.result
         feature = _get_feature_by_id(featureId, params, model)
         if feature is not None:
             vector_model = model
@@ -382,23 +406,24 @@ def _get_feature_db(featureId, params, models, process=True):
     return feature, vector_model
 
 
-def _get_feature_grid(col, row, timestamp, grid, bucket, params):
+def _get_feature_grid(col, row, timestamp, grid, bucket_name, params):
     feature = None
     col = str(col)
     row = str(row)
     timestamp = str(timestamp)
     layerBodId = params.layerId
     featureS3KeyName = 'tooltip/%s/default/%s/%s/%s/data.json' % (layerBodId, timestamp, col, row)
-    featureS3Key = bucket.get_key(featureS3KeyName)
-    # Fail gracefully if the key doesn't exist
-    if featureS3Key:
-        featureJson = decompress_gzipped_string(featureS3Key.get_contents_as_string())
+    try:
+
+        featureJson = decompress_gzipped_string(get_file_from_bucket(bucket_name, featureS3KeyName)['Body'])
         # Beacause of esriJSON design and papyrus no esrijson support for now
         feature = geojson.loads(featureJson)
         if not params.returnGeometry:
             del feature['geometry']
         feature['layerBodId'] = layerBodId
         feature['layerName'] = params.translate(layerBodId)
+    except Exception:
+        pass
     return feature, None
 
 
@@ -445,7 +470,8 @@ def _get_areas_for_params(params, models):
     a cut areas, layerIds and group attribute. '''
     groupbyIdx = 0
     for vectorLayer in models:
-        bodId = vectorLayer.keys()[0]
+        # Python2/3
+        bodId = next(iter(vectorLayer))
         if params.groupby is not None:
             models = [
                 m for m in vectorLayer[bodId]['models']
@@ -519,19 +545,22 @@ def _get_features_for_filters(params, layerBodIds, maxFeatures=None, where=None)
     ''' Returns a generator function that yields
     a feature. '''
     for layer in layerBodIds:
-        layerBodId, models = next(layer.iteritems())
+        # Python2/3
+        layerBodId, models = next(six.iteritems(layer))
         # Determine the limit
         limits = [x for x in [maxFeatures, params.limit] if x is not None]
         flimit = min(limits) if len(limits) > 0 else None
 
         if where is not None:
             vectorLayer = []
+            filter_attributes = []
             for model in models:
-                txt = format_query(model, where)
+                filter_attributes += list(model().get_orm_columns_names())
+                txt = format_query(model, where, params.lang)
                 if txt is not None:
                     vectorLayer.append((model, txt))
             if len(vectorLayer) == 0:
-                raise exc.HTTPBadRequest('The where clause is not valid for %s.' % layerBodId)
+                raise exc.HTTPBadRequest('The layerDefs clause is not valid for %s.' % layerBodId)
         else:
             vectorLayer = [(model, None) for model in models]
 
@@ -641,7 +670,7 @@ def _attributes(request):
 
 
 def _find(request):
-    MaxFeatures = 50
+    MaxFeatures = MAX_FEATURES
     params = FindServiceValidation(request)
     if params.searchText is None:
         raise exc.HTTPBadRequest('Please provide a searchText')
@@ -651,8 +680,23 @@ def _find(request):
     if models is None:
         raise exc.HTTPBadRequest(
             'No Vector Table was found for %s for searchField %s' % (params.layer, params.searchField))
-
+    vectorLayers = []
     for model in models:
+        where_txt = None
+        if params.where is not None:
+            where_txt = format_query(model, params.where, params.lang)
+        vectorLayers.append((model, where_txt))
+
+    # Attributes in the 'where' or 'layerDefs' should match attributes in
+    # at least one model related to a layer bodId
+    # TODO: python3
+    layers = list(list(six.moves.zip(*vectorLayers))[1])
+    if params.where is not None and not any(layers):
+        raise exc.HTTPBadRequest(
+            'Filtering on a not existing field on layer {}'.format(params.layer)
+        )
+
+    for model, where_text in vectorLayers:
         searchColumn = model.get_column_by_property_name(params.searchField)
         query = request.db.query(model)
         if params.contains:
@@ -671,6 +715,11 @@ def _find(request):
                 query = query.filter(
                     searchColumn == searchText
                 )
+        if where_text is not None:
+            where_txt = unnacent_where_text(where_text, model)
+            query = query.filter(text(
+                "({})".format(where_txt))  # operator precedance
+            )
         query = query.limit(MaxFeatures)
         for feature in query:
             f = _process_feature(feature, params)
@@ -695,7 +744,7 @@ def _format_search_text(columnType, searchText):
         else:
             raise exc.HTTPBadRequest('Please provide an integer')
     elif isinstance(columnType, Numeric):
-        if re.match('^\d+?\.\d+?$', searchText) is not None:
+        if re.match(r'^\d+?\.\d+?$', searchText) is not None:
             return float(searchText)
         else:
             raise exc.HTTPBadRequest('Please provide a float')
@@ -740,10 +789,11 @@ def _cut(request):
             feature = next(areas_gen)
         except InternalError as e:  # pragma: no cover
             raise exc.HTTPInternalServerError(
-                'Your request generated the following database error: %s' % e)
+                'Your request generated the following database error: %s' % e.message.replace('\n', ''))
         except StopIteration:
             break
-        bodId = feature.keys()[0]
+        # Python2/3
+        bodId = next(iter(feature))
         if bodId not in results:
             results[bodId] = [feature[bodId]]
         else:
@@ -755,9 +805,11 @@ def _cut(request):
 def _process_feature(feature, params):
     if params.geometryFormat == 'geojson':
         return feature.to_geojson(params.translate,
-                           params.returnGeometry)
+                           params.returnGeometry,
+                           srid=params.srid)
     return feature.to_esrijson(params.translate,
-                               params.returnGeometry)
+                               params.returnGeometry,
+                               srid=params.srid)
 
 
 def _get_features_releases(model, params):

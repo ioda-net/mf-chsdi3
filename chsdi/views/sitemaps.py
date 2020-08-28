@@ -50,7 +50,7 @@ def index(params):
     buildFileNames = lambda x: params.basename + '?content=' + x
     data = {
         'host': params.host,
-        'sitemaps': map(buildFileNames, params.in_index)
+        'sitemaps': list(map(buildFileNames, params.in_index))
     }
 
     response = render_to_response(
@@ -86,7 +86,9 @@ def layers(params):
                  .filter(Catalog.topic.ilike('%%%s%%' % topic['id']))
                  .filter(Catalog.category.ilike(u'%%layer%%')))
         query = filter_by_geodata_staging(query, Catalog.staging, params.staging)
-        layerlinks = map(buildlink, query.all())
+        # Python2/3
+        # map() -> list(map())
+        layerlinks = list(map(buildlink, query.all()))
         paths.extend(toAllLanguages(params.langs, layerlinks, '&', ''))
 
     return asXml(params, paths, params.geoadminhost)
@@ -107,7 +109,7 @@ def address_index(params):
     names = lambda x: params.basename + '?content=addresses_' + str(x)
     data = {
         'host': params.host,
-        'sitemaps': map(names, range(max_index))
+        'sitemaps': list(map(names, range(max_index)))
     }
     response = render_to_response(
         'chsdi:templates/sitemaps/sitemapindex.mako',
@@ -125,10 +127,10 @@ def address_part(params):
              .limit(__MAX_NUM_URLS__))
     paths = []
     for res in query.all():
-        paths.append('?' + res.__bodId__ + '=' + res.id +
-                     '&X=' + str(int(res.X)) +
-                     '&Y=' + str(int(res.Y)) +
-                     '&zoom=9')
+        paths.append('?' + res.__bodId__ + '=' + res.id
+                + '&X=' + str(int(res.X))
+                + '&Y=' + str(int(res.Y))
+                + '&zoom=9')
     return asXml(params, paths, params.geoadminhost)
 
 
@@ -157,5 +159,5 @@ def asXml(params, paths, host):
 def toAllLanguages(langs, links, pre, post):
     ret = []
     for lan in langs:
-        ret.extend(map(lambda x: x + pre + 'lang=' + lan + post, links))
+        ret.extend(list(map(lambda x: x + pre + 'lang=' + lan + post, links)))
     return ret

@@ -4,11 +4,13 @@ import os
 import sys
 import codecs
 import yaml
+import six
 import psycopg2
 from collections import OrderedDict
 from psycopg2.extras import RealDictCursor
 from psycopg2.extensions import register_type, UNICODE
 
+DEFAULT_DBPORT = 5432
 
 def validate_params(argv):
     if len(argv) > 2:
@@ -34,7 +36,10 @@ def get_yaml(yaml_file_path):
 
 
 def get_db_connection():
-    return psycopg2.connect(host=os.environ.get('DBHOST'), dbname='bod_master', user='www-data')
+    return psycopg2.connect(host=os.environ.get('DBHOST'), 
+                            port=os.environ.get('DBPORT', DEFAULT_DBPORT),
+                            dbname='bod_master', 
+                            user='www-data')
 
 
 def select_all(cur):
@@ -87,12 +92,16 @@ def sanatize(txt):
 
 def write_po_file(lang, translations, f):
     f.write(create_yaml_header(lang))
-    for msg_id, val in translations[lang].iteritems():
-        f.write("msgid \"" + sanatize(msg_id) + "\"\n")
-        if val:
-            f.write("msgstr \"" + sanatize(val) + "\"\n\n")
-        else:
-            f.write("msgstr \"" + sanatize(msg_id) + "\"\n\n")
+    if six.PY2:
+        items_gen = translations[lang].iteritems()
+    else:
+        items_gen = translations[lang].items()
+    for msg_id, val in items_gen:
+            f.write("msgid \"" + sanatize(msg_id) + "\"\n")
+            if val:
+                f.write("msgstr \"" + sanatize(val) + "\"\n\n")
+            else:
+                f.write("msgstr \"" + sanatize(msg_id) + "\"\n\n")
 
 
 def main():

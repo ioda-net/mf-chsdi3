@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import StringIO
 import requests
 
 from pyramid.view import view_config
@@ -8,6 +7,9 @@ from pyramid.httpexceptions import HTTPBadRequest
 from pyramid.response import Response
 
 from chsdi.lib.helpers import check_url, make_api_url, quoting
+
+
+from six import BytesIO
 
 
 @view_config(route_name='qrcodegenerator')
@@ -33,10 +35,10 @@ def _make_qrcode_img(url):
     try:
         qr.add_data(url)
         qr.make()
-        output = StringIO.StringIO()
+        output = BytesIO()
         img = qr.make_image()
         img.save(output)
-    except:  # pragma: no cover
+    except Exception:  # pragma: no cover
         raise HTTPBadRequest('An error occured during the qrcode generation')
     return output.getvalue()
 
@@ -47,5 +49,5 @@ def _shorten_url(request, url):
         resp = requests.get(API3_SHORTEN_URL % url)
         data = resp.json()
         return data['shorturl']
-    except:
+    except Exception:
         return url

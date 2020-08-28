@@ -1,6 +1,7 @@
 *.pyc
 *.ini
 *.mo
+*.po
 *.iml
 *.swp
 *~
@@ -17,6 +18,7 @@ chsdi.egg-info
 chsdi/static/doc/build/
 chsdi/static/css/extended.min.css
 chsdi/static/css/blueimp-gallery.min.css
+chsdi/static/info.json
 deploy/hooks/pre-create-code
 node_modules
 MANIFEST
@@ -24,5 +26,7 @@ buildout_branch.cfg
 deploy/deploy-branch.cfg
 deploy/conf/00-branch.conf
 print/WEB-INF/web.xml
-chsdi/tests/mapproxy*
-chsdi/tests/varnish*
+tests/varnish*
+app*.log
+local
+junit-results

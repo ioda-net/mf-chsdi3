@@ -11,6 +11,23 @@ from chsdi.models.vector import Vector, Geometry2D
 Base = bases['bafu']
 
 
+class SchutzgebieteBiosphaerenreservate(Base, Vector):
+    __tablename__ = 'biosphaeren'
+    __table_args__ = ({'schema': 'schutzge', 'autoload': False})
+    __bodId__ = 'ch.bafu.schutzgebiete-biosphaerenreservate'
+    __template__ = 'templates/htmlpopup/biosphaerenreservate.mako'
+    __returnedGeometry__ = 'the_geom_highlight'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    name = Column('name', Unicode)
+    objnummer = Column('objnummer', Integer)
+    version = Column('version', Unicode)
+    shape_area_ha = Column('shape_area_ha', Float)
+    the_geom = Column(Geometry2D)
+    the_geom_highlight = Column('the_geom_gen50', Geometry2D)
+
+register('ch.bafu.schutzgebiete-biosphaerenreservate', SchutzgebieteBiosphaerenreservate)
+
+
 class AlpweidenHerdenschutzhunde(Base, Vector):
     __tablename__ = 'alpenweiden_herdenschutzhunde'
     __table_args__ = ({'schema': 'fauna', 'autoload': False})
@@ -401,7 +418,7 @@ register('ch.bafu.hydrologie-niedrigwasserstatistik', Niedrigwasserstatistik)
 
 
 class TypFliessgewaesser(Base, Vector):
-    __tablename__ = 'typ_fliessgewaesser'
+    __tablename__ = 'typisierung_fliessgewaesser'
     __table_args__ = ({'schema': 'hydrologie', 'autoload': False})
     __bodId__ = 'ch.bafu.typisierung-fliessgewaesser'
     __queryable_attributes__ = ['objectid_gwn25', 'grosserfluss', 'biogeo', 'hoehe', 'abfluss', 'gefaelle', 'geo', 'code', 'gewaessertyp', 'aehnlichkeit']
@@ -425,6 +442,15 @@ class TypFliessgewaesser(Base, Vector):
     url_uebersicht_de = Column('url_uebersicht_de', Unicode)
     url_uebersicht_fr = Column('url_uebersicht_fr', Unicode)
     name = Column('name', Unicode)
+    discharge = Column('discharge', Numeric)
+    discharge_source = Column('discharge_source', Unicode)
+    discharge_quality = Column('discharge_quality', Integer)
+    slope = Column('slope', Numeric)
+    slope_quality = Column('slope_quality', Integer)
+    ibchqregim = Column('ibchqregim', Integer)
+    ibch_corr = Column('ibch_corr', Integer)
+    quali_d = Column('quali_d', Integer)
+    quali_f = Column('quali_f', Integer)
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.typisierung-fliessgewaesser', TypFliessgewaesser)
@@ -794,7 +820,7 @@ class GewaesserschutzBadewasserqualitaet(Base, Vector):
     __table_args__ = ({'schema': 'wasser', 'autoload': False})
     __bodId__ = 'ch.bafu.gewaesserschutz-badewasserqualitaet'
     __queryable_attributes__ = ['id', 'bwname', 'groupid', 'nwunitname', 'rbdsuname',
-                                'gemeinde', 'canton', 'bwatercat', 'qualitaet_ch']
+                                'gemeinde', 'canton', 'bwatercat', 'qualitaet_eua']
     __template__ = 'templates/htmlpopup/gewaesserschutz_badewasserqualitaet.mako'
     __extended_info__ = True
     __label__ = 'bwname'
@@ -809,8 +835,8 @@ class GewaesserschutzBadewasserqualitaet(Base, Vector):
     canton = Column('canton', Unicode, nullable=False)
     eua_badeplatz = Column('eua_badeplatz', Integer, nullable=False)
     gemeinde = Column('gemeinde', Unicode, nullable=False)
-    qualitaet_ch = Column('qualitaet_ch', Unicode, nullable=False)
-    qualitaet_eua = Column('qualitaet_eua', Unicode, nullable=True)
+    qualitaet_ch = Column('qualitaet_ch', Unicode, nullable=True)
+    qualitaet_eua = Column('qualitaet_eua', Unicode, nullable=False)
     anzahlmessungen = Column('anzahlmessungen', Integer, nullable=False)
     verunreinigung_tage = Column('verunreinigung_tage', Integer, nullable=False)
     coord_ch = Column('coord_ch', Unicode, nullable=False)
@@ -826,7 +852,8 @@ class AmG(Base, Vector):
     __bodId__ = 'ch.bafu.bundesinventare-amphibien_wanderobjekte'
     __template__ = 'templates/htmlpopup/bundinv_amphibien_w.mako'
     __label__ = 'name'
-    id = Column('objnummer', Unicode, primary_key=True)
+    id = Column('bgdi_id', Integer, primary_key=True)
+    objnummer = Column('objnummer', Unicode)
     name = Column('name', Unicode)
     refobjblat = Column('refobjblat', Unicode)
     the_geom = Column(Geometry2D)
@@ -1071,19 +1098,23 @@ register('ch.bafu.gewaesserschutzbereiche', Gewaesserschutzbereiche)
 
 
 class Vorfluter (Base, Vector):
-    __tablename__ = 'vorfluter'
+    __tablename__ = 'effluent'
     __table_args__ = ({'schema': 'wasser', 'autoload': False})
     __bodId__ = 'ch.bafu.wasser-vorfluter'
     __template__ = 'templates/htmlpopup/vorfluter.mako'
-    __label__ = 'teilezgnr'
+    __label__ = 'id'
     id = Column('bgdi_id', Integer, primary_key=True)
-    teilezgnr = Column('teilezgnr', Integer)
+    id_2 = Column('id', Integer)
+    ezgnr = Column('ezgnr', Integer)
     gwlnr = Column('gwlnr', Unicode)
-    measure = Column('measure', Integer)
-    endmeasure = Column('endmeasure', Integer)
-    name = Column('name', Unicode)
-    regimenr = Column('regimenr', Integer)
-    regimetyp = Column('regimetyp', Unicode)
+    unteresende = Column('unteresende', Integer)
+    oberesende = Column('oberesende', Integer)
+    gewaessername = Column('gewaessername', Unicode)
+    de_nebenarm = Column('de_nebenarm', Unicode)
+    fr_nebenarm = Column('fr_nebenarm', Unicode)
+    it_nebenarm = Column('it_nebenarm', Unicode)
+    en_nebenarm = Column('en_nebenarm', Unicode)
+    rm_nebenarm = Column('rm_nebenarm', Unicode)
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.wasser-vorfluter', Vorfluter)
@@ -1106,63 +1137,36 @@ register('ch.bafu.hydrologie-gewaesserzustandsmessstationen', Gewaesserzustandst
 
 
 class Teileinzugsgebiete2 (Base, Vector):
-    __tablename__ = 'view_ebene_2km_full'
+    __tablename__ = 'teileinzugsgebiete_2_full'
     __table_args__ = ({'schema': 'wasser', 'autoload': False})
     __bodId__ = 'ch.bafu.wasser-teileinzugsgebiete_2'
     __template__ = 'templates/htmlpopup/teileinzugsgebiete2.mako'
-    __returnedGeometry__ = 'ext_the_geom'
+    __returnedGeometry__ = 'the_geom_ext'
     __label__ = 'id'
     __extended_info__ = True
-    __queryable_attributes__ = ['gwlnr', 'id', 'ext_ezg_flussgb']
-    id = Column('teilezgnr', Integer, primary_key=True)
-    gwlnr = Column('gwlnr', Unicode)
-    measure = Column('measure', Integer)
-    teilezgfla = Column('teilezgfla', Unicode)
-    ezgflaeche = Column('ezgflaeche', Unicode)
-    typ2_de = Column('typ2_de', Unicode)
-    flussgb_de = Column('flussgb_de', Unicode)
-    typ2_fr = Column('typ2_fr', Unicode)
-    flussgb_fr = Column('flussgb_fr', Unicode)
-    typ2_it = Column('typ2_it', Unicode)
-    flussgb_it = Column('flussgb_it', Unicode)
-    typ2_rm = Column('typ2_rm', Unicode)
-    flussgb_rm = Column('flussgb_rm', Unicode)
-    typ2_en = Column('typ2_en', Unicode)
-    flussgb_en = Column('flussgb_en', Unicode)
-    ext_gewiss_nr_namen_gewaesser = Column('ext_gewiss_nr_namen_gewaesser', Unicode)
-    ext_ezg_xy_gebietsauslass = Column('ext_ezg_xy_gebietsauslass', Unicode)
-    ext_gebietsauslaesse_gemeindename = Column('ext_gebietsauslaesse_gemeindename', Unicode)
-    ext_ezg_gewissnr = Column('ext_ezg_gewissnr', Integer)
-    ext_ezg_flussgb = Column('ext_ezg_flussgb', Integer)
-    ext_physiogeographie_gesamtflaeche = Column('ext_physiogeographie_gesamtflaeche', Numeric)
-    ext_physiogeographie_anteil_ch = Column('ext_physiogeographie_anteil_ch', Numeric)
-    ext_landnutzung_ant_siedlung = Column('ext_landnutzung_ant_siedlung', Numeric)
-    ext_landnutzung_ant_landwirtschaft = Column('ext_landnutzung_ant_landwirtschaft', Numeric)
-    ext_landnutzung_ant_bestockt = Column('ext_landnutzung_ant_bestockt', Numeric)
-    ext_landnutzung_ant_gewaesser = Column('ext_landnutzung_ant_gewaesser', Numeric)
-    ext_landnutzung_ant_gletscher_firn = Column('ext_landnutzung_ant_gletscher_firn', Numeric)
-    ext_landnutzung_ant_unprod_sonst = Column('ext_landnutzung_ant_unprod_sonst', Numeric)
-    ext_physiogeographie_ch_min_z = Column('ext_physiogeographie_ch_min_z', Numeric)
-    ext_physiogeographie_ch_mean_z = Column('ext_physiogeographie_ch_mean_z', Numeric)
-    ext_physiogeographie_ch_max_z = Column('ext_physiogeographie_ch_max_z', Numeric)
-    ext_abfluesse_regimetyp = Column('ext_abfluesse_regimetyp', Unicode)
-    ext_abfluesse_mqn_jahr = Column('ext_abfluesse_mqn_jahr', Numeric)
-    ext_abfluesse_mqn_jan = Column('ext_abfluesse_mqn_jan', Numeric)
-    ext_abfluesse_mqn_feb = Column('ext_abfluesse_mqn_feb', Numeric)
-    ext_abfluesse_mqn_mar = Column('ext_abfluesse_mqn_mar', Numeric)
-    ext_abfluesse_mqn_apr = Column('ext_abfluesse_mqn_apr', Numeric)
-    ext_abfluesse_mqn_mai = Column('ext_abfluesse_mqn_mai', Numeric)
-    ext_abfluesse_mqn_jun = Column('ext_abfluesse_mqn_jun', Numeric)
-    ext_abfluesse_mqn_jul = Column('ext_abfluesse_mqn_jul', Numeric)
-    ext_abfluesse_mqn_aug = Column('ext_abfluesse_mqn_aug', Numeric)
-    ext_abfluesse_mqn_sep = Column('ext_abfluesse_mqn_sep', Numeric)
-    ext_abfluesse_mqn_okt = Column('ext_abfluesse_mqn_okt', Numeric)
-    ext_abfluesse_mqn_nov = Column('ext_abfluesse_mqn_nov', Numeric)
-    ext_abfluesse_mqn_dez = Column('ext_abfluesse_mqn_dez', Numeric)
-    ext_ezg_datenausgabe = Column('ext_ezg_datenausgabe', Integer)
-    ext_abfluesse_abflussvar = Column('ext_abfluesse_abflussvar', Numeric)
+    id = Column('ezgnr', Integer, primary_key=True)
+    gewaessername = Column('gewaessername', Unicode)
+    gesamtflaeche = Column('gesamtflaeche', Float)
+    de_nebenarm = Column('de_nebenarm', Unicode)
+    fr_nebenarm = Column('fr_nebenarm', Unicode)
+    it_nebenarm = Column('it_nebenarm', Unicode)
+    en_nebenarm = Column('en_nebenarm', Unicode)
+    rm_nebenarm = Column('rm_nebenarm', Unicode)
+    min_z = Column('min_z', Float)
+    max_z = Column('max_z', Float)
+    mean_z = Column('mean_z', Float)
+    anteil_ch = Column('anteil_ch', Float)
+    as_siedlungsflaechen = Column('as_siedlungsflaechen', Float)
+    as_landwirtschaftsflaechen = Column('as_landwirtschaftsflaechen', Float)
+    as_bestockteflaechen = Column('as_bestockteflaechen', Float)
+    as_unproduktiveflaechen = Column('as_unproduktiveflaechen', Float)
+    clc_bebauteflaechen = Column('clc_bebauteflaechen', Float)
+    clc_landwirtschaft = Column('clc_landwirtschaft', Float)
+    clc_waelder = Column('clc_waelder', Float)
+    clc_feuchtflaechen = Column('clc_feuchtflaechen', Float)
+    clc_wasserflaechen = Column('clc_wasserflaechen', Float)
     the_geom = Column(Geometry2D)
-    ext_the_geom = Column('ext_the_geom', Geometry2D)
+    the_geom_ext = Column('the_geom_ext', Geometry2D)
 
 register('ch.bafu.wasser-teileinzugsgebiete_2', Teileinzugsgebiete2)
 
@@ -1182,32 +1186,22 @@ register('ch.bafu.wasser-teileinzugsgebiete_40', Teileinzugsgebiete40)
 
 
 class Gebietsauslaesse (Base, Vector):
-    __tablename__ = 'outlets'
+    __tablename__ = 'gebietsauslaesse'
     __table_args__ = ({'schema': 'wasser', 'autoload': False})
     __bodId__ = 'ch.bafu.wasser-gebietsauslaesse'
     __template__ = 'templates/htmlpopup/gebietsauslaesse.mako'
-    __extended_info__ = True
-    __label__ = 'ezgnr'
+    __label__ = 'id'
     id = Column('bgdi_id', Integer, primary_key=True)
+    id_2 = Column('id', Integer)
     ezgnr = Column('ezgnr', Integer)
     gwlnr = Column('gwlnr', Unicode)
-    measure = Column('measure', Integer)
-    gesamtflae = Column('gesamtflae', Unicode)
-    gewaessern = Column('gewaessern', Unicode)
-    anteil_ch = Column('anteil_ch', Unicode)
-    kanal_de = Column('kanal_de', Unicode)
-    kanal_fr = Column('kanal_fr', Unicode)
-    kanal_it = Column('kanal_it', Unicode)
-    kanal_rm = Column('kanal_rm', Unicode)
-    kanal_en = Column('kanal_en', Unicode)
-    meanalt = Column('meanalt', Unicode)
-    maxalt = Column('maxalt', Unicode)
-    mq_jahr = Column('mq_jahr', Unicode)
-    feuchtflae = Column('feuchtflae', Unicode)
-    wasserflae = Column('wasserflae', Unicode)
-    bebautefl = Column('bebautefl', Unicode)
-    landwirtsc = Column('landwirtsc', Unicode)
-    wald_natur = Column('wald_natur', Unicode)
+    gewaessername = Column('gewaessername', Unicode)
+    adresse = Column('adresse', Integer)
+    de_nebenarm = Column('de_nebenarm', Unicode)
+    fr_nebenarm = Column('fr_nebenarm', Unicode)
+    it_nebenarm = Column('it_nebenarm', Unicode)
+    rm_nebenarm = Column('rm_nebenarm', Unicode)
+    en_nebenarm = Column('en_nebenarm', Unicode)
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.wasser-gebietsauslaesse', Gebietsauslaesse)
@@ -1255,18 +1249,91 @@ class AU_A2(Base, Vector):
 register('ch.bafu.bundesinventare-auen_anhang2', AU_A2)
 
 
+class AuenVegetationAlpin(Base, Vector):
+    __tablename__ = 'auen_vegetation_alpin'
+    __table_args__ = ({'schema': 'bundinv', 'autoload': False})
+    __bodId__ = 'ch.bafu.bundesinventare-auen_vegetation_alpin'
+    __queryable_attributes__ = ['objnummer', 'objname', 'vegetation']
+    __template__ = 'templates/htmlpopup/auen_vegetation_alpin.mako'
+    __label__ = 'objname'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    objname = Column('objname', Unicode)
+    objnummer = Column('objnummer', Integer)
+    refobjblat = Column('refobjblat', Unicode)
+    vegetation = Column('vegetation', Integer)
+    vegetation_de = Column('devegetati', Unicode)
+    vegetation_fr = Column('frvegetati', Unicode)
+    vegetation_it = Column('itvegetati', Unicode)
+    conflict = Column('konfliktpo', Integer)
+    conflict_de = Column('dekonflikt', Unicode)
+    conflict_fr = Column('frkonflikt', Unicode)
+    conflict_it = Column('itkonflikt', Unicode)
+    the_geom = Column(Geometry2D)
+
+register('ch.bafu.bundesinventare-auen_vegetation_alpin', AuenVegetationAlpin)
+
+
+class AuenAusserhalbBundesinventar(Base, Vector):
+    __tablename__ = 'auen_ausserhalb_bundinv'
+    __table_args__ = ({'schema': 'schutzge', 'autoload': False})
+    __bodId__ = 'ch.bafu.auen-ausserhalb_bundesinventar'
+    __template__ = 'templates/htmlpopup/auen_ausserhalb_bundinv.mako'
+    __label__ = 'name'
+    id = Column('objnummer', Integer, primary_key=True)
+    name = Column('name', Unicode)
+    de_bedeutung = Column('de_bedeutung', Unicode)
+    fr_bedeutung = Column('fr_bedeutung', Unicode)
+    it_bedeutung = Column('it_bedeutung', Unicode)
+    de_qualitaet = Column('de_qualitaet', Unicode)
+    fr_qualitaet = Column('fr_qualitaet', Unicode)
+    shape_area = Column('shape_area', Integer)
+    the_geom = Column(Geometry2D)
+
+register(AuenAusserhalbBundesinventar.__bodId__, AuenAusserhalbBundesinventar)
+
+
+class AlpinAuenAusserhalbBundesinventar(Base, Vector):
+    __tablename__ = 'alpinauen'
+    __table_args__ = ({'schema': 'schutzge', 'autoload': False})
+    __bodId__ = 'ch.bafu.auen-ausserhalb_bundesinventar_alpin'
+    __queryable_attributes__ = ['name']
+    __template__ = 'templates/htmlpopup/auen_ausserhalb_bundinv_alpin.mako'
+    __label__ = 'name'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    name = Column('name', Unicode)
+    de_biobedeutung = Column('de_biobedeutung', Unicode)
+    fr_biobedeutung = Column('fr_biobedeutung', Unicode)
+    it_biobedeutung = Column('it_biobedeutung', Unicode)
+    de_geobedeutung = Column('de_geobedeutung', Unicode)
+    fr_geobedeutung = Column('fr_geobedeutung', Unicode)
+    it_geobedeutung = Column('it_geobedeutung', Unicode)
+    de_qualitaet = Column('de_qualitaet', Unicode)
+    fr_qualitaet = Column('fr_qualitaet', Unicode)
+    it_qualitaet = Column('it_qualitaet', Unicode)
+    auentyp = Column('auentyp', Unicode)
+    shape_area = Column('shape_area', Integer)
+    the_geom = Column(Geometry2D)
+
+register(AlpinAuenAusserhalbBundesinventar.__bodId__, AlpinAuenAusserhalbBundesinventar)
+
+
 class AuenVegetationsKarten(Base, Vector):
-    __tablename__ = 'auen_vegetation'
+    __tablename__ = 'auen_vegetationskarte'
     __table_args__ = ({'schema': 'flora', 'autoload': False})
     __bodId__ = 'ch.bafu.auen-vegetationskarten'
-    __queryable_attributes__ = ['auveg_obj', 'auveg_name', 'auveg_jahr', 'auveg_k22']
+    __queryable_attributes__ = ['obj_nummer', 'name', 'kartierjahr', 'primaervegetation_de', 'primaervegetation_fr', 'primaervegetation_it']
     __template__ = 'templates/htmlpopup/auen_veg.mako'
-    __label__ = 'auveg_name'
+    __label__ = 'name'
     id = Column('bgdi_id', Integer, primary_key=True)
-    auveg_name = Column('auveg_name', Unicode)
-    auveg_obj = Column('auveg_obj', Integer)
-    auveg_jahr = Column('auveg_jahr', Integer)
-    auveg_k22 = Column('auveg_k22', Integer)
+    name = Column('name', Unicode)
+    obj_nummer = Column('obj_nummer', Integer)
+    kartierjahr = Column('kartierjahr', Integer)
+    primaervegetation_de = Column('primaervegetation_de', Unicode)
+    primaervegetation_fr = Column('primaervegetation_fr', Unicode)
+    primaervegetation_it = Column('primaervegetation_it', Unicode)
+    code_primaervegetation = Column('code_primaervegetation', Unicode)
+    ref_obj_blatt = Column('ref_obj_blatt', Unicode)
+    area_ha = Column('area_ha', Numeric)
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.auen-vegetationskarten', AuenVegetationsKarten)
@@ -1361,6 +1428,9 @@ class WV(Base, Vector):
     schutzkategorie_de = Column('schutzkategorie_de', Unicode)
     schutzkategorie_fr = Column('schutzkategorie_fr', Unicode)
     schutzkategorie_it = Column('schutzkategorie_it', Unicode)
+    schutzebene_de = Column('schutzebene_de', Unicode)
+    schutzebene_fr = Column('schutzebene_fr', Unicode)
+    schutzebene_it = Column('schutzebene_it', Unicode)
     refobjblatt = Column('refobjblatt', Unicode)
     shape_area = Column('shape_area', Numeric)
     obj_gisflaeche = Column('obj_gisflaeche', Numeric)
@@ -1421,6 +1491,7 @@ class Flachmoore(Base, Vector):
     __table_args__ = ({'schema': 'bundinv', 'autoload': False})
     __bodId__ = 'ch.bafu.bundesinventare-flachmoore'
     __template__ = 'templates/htmlpopup/flachmoore.mako'
+    __queryable_attributes__ = ['objnummer']
     __label__ = 'name'
     id = Column('bgdi_id', Integer, primary_key=True)
     name = Column('name', Unicode)
@@ -1433,15 +1504,15 @@ register('ch.bafu.bundesinventare-flachmoore', Flachmoore)
 
 
 class FlachmooreReg(Base, Vector):
-    __tablename__ = 'flachmoore_regional'
+    __tablename__ = 'fm_regional'
     __table_args__ = ({'schema': 'bundinv', 'autoload': False})
     __bodId__ = 'ch.bafu.bundesinventare-flachmoore_regional'
     __template__ = 'templates/htmlpopup/flachmoore_reg.mako'
-    __label__ = 'fmreg_name'
+    __label__ = 'name'
     id = Column('bgdi_id', Integer, primary_key=True)
-    fmreg_name = Column('fmreg_name', Unicode)
-    fmreg_obj = Column('fmreg_obj', Unicode)
-    fmreg_gf = Column('fmreg_gf', Unicode)
+    name = Column('name', Unicode)
+    objnummer = Column('objnummer', Unicode)
+    shape_area = Column('shape_area', Unicode)
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.bundesinventare-flachmoore_regional', FlachmooreReg)
@@ -1740,49 +1811,6 @@ class Swissprtr(Base, Vector):
 register('ch.bafu.swissprtr', Swissprtr)
 
 
-class Holzvorrat(Base, Vector):
-    __tablename__ = 'holzvorrat'
-    __table_args__ = ({'schema': 'wald', 'autoload': False})
-    __bodId__ = 'ch.bafu.holzvorrat'
-    __template__ = 'templates/htmlpopup/holzvorrat.mako'
-    __label__ = 'wireg_'
-    id = Column('gid', Integer, primary_key=True)
-    fid = Column('id', Integer)
-    vorrat = Column('vorrat', Numeric)
-    wireg_ = Column('wireg_', Unicode)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.holzvorrat', Holzvorrat)
-
-
-class Holzzuwachs(Base, Vector):
-    __tablename__ = 'holzzuwachs'
-    __table_args__ = ({'schema': 'wald', 'autoload': False})
-    __bodId__ = 'ch.bafu.holzzuwachs'
-    __template__ = 'templates/htmlpopup/holzzuwachs.mako'
-    __label__ = 'wirtschaftsregion'
-    id = Column('gid', Integer, primary_key=True)
-    wirtschaftsregion = Column('wirtschaftsregion', Unicode)
-    holzzuwachs = Column('holzzuwachs', Numeric)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.holzzuwachs', Holzzuwachs)
-
-
-class Holnutzung(Base, Vector):
-    __tablename__ = 'holznutzung'
-    __table_args__ = ({'schema': 'wald', 'autoload': False})
-    __bodId__ = 'ch.bafu.holznutzung'
-    __template__ = 'templates/htmlpopup/holznutzung.mako'
-    __label__ = 'wireg_'
-    id = Column('gid', Integer, primary_key=True)
-    wireg_ = Column('wireg_', Unicode)
-    nutzung = Column('nutzung', Numeric)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.holznutzung', Holnutzung)
-
-
 class Nabel(Base, Vector):
     __tablename__ = 'nabel'
     __table_args__ = ({'schema': 'luft', 'autoload': False})
@@ -1849,23 +1877,6 @@ class Smaragd(Base, Vector):
 register('ch.bafu.schutzgebiete-smaragd', Smaragd)
 
 
-class Biosphaerenreservate(Base, Vector):
-    __tablename__ = 'biores'
-    __table_args__ = ({'schema': 'schutzge', 'autoload': False})
-    __bodId__ = 'ch.bafu.schutzgebiete-biosphaerenreservate'
-    __template__ = 'templates/htmlpopup/biosphaerenreservate.mako'
-    __label__ = 'biores_nam'
-    id = Column('bgdi_id', Integer, primary_key=True)
-    biores_ver = Column('biores_ver', Unicode)
-    biores_fl = Column('biores_fl', Unicode)
-    biores_gf = Column('biores_gf', Unicode)
-    biores_nam = Column('biores_nam', Unicode)
-    biores_obj = Column('biores_obj', Unicode)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.schutzgebiete-biosphaerenreservate', Biosphaerenreservate)
-
-
 class Moose(Base, Vector):
     __tablename__ = 'mooseflora'
     __table_args__ = ({'schema': 'flora', 'autoload': False})
@@ -1897,50 +1908,6 @@ class Weltensutter(Base, Vector):
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.flora-weltensutter_atlas', Weltensutter)
-
-
-class Baumarten(Base, Vector):
-    __tablename__ = 'baumartenmischung'
-    __table_args__ = ({'schema': 'wald', 'autoload': False})
-    __bodId__ = 'ch.bafu.landesforstinventar-baumarten'
-    __template__ = 'templates/htmlpopup/baumarten.mako'
-    __label__ = 'wirtschaft'
-    id = Column('bgdi_id', Integer, primary_key=True)
-    wirtschaft = Column('wirtschaft', Unicode)
-    anteil_lau = Column('anteil_lau', Numeric)
-    anteil_nad = Column('anteil_nad', Numeric)
-    vorrat = Column('vorrat', Numeric)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.landesforstinventar-baumarten', Baumarten)
-
-
-class Waldanteil(Base, Vector):
-    __tablename__ = 'waldanteil'
-    __table_args__ = ({'schema': 'wald', 'autoload': False})
-    __bodId__ = 'ch.bafu.landesforstinventar-waldanteil'
-    __template__ = 'templates/htmlpopup/waldanteil.mako'
-    __label__ = 'wirtschaft'
-    id = Column('bgdi_id', Integer, primary_key=True)
-    wirtschaft = Column('wirtschaft', Unicode)
-    waldflaech = Column('waldflaech', Numeric)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.landesforstinventar-waldanteil', Waldanteil)
-
-
-class Totholz(Base, Vector):
-    __tablename__ = 'totholzvolumen'
-    __table_args__ = ({'schema': 'wald', 'autoload': False})
-    __bodId__ = 'ch.bafu.landesforstinventar-totholz'
-    __template__ = 'templates/htmlpopup/totholz.mako'
-    __label__ = 'wirtschaft'
-    id = Column('bgdi_id', Integer, primary_key=True)
-    wirtschaft = Column('wirtschaft', Unicode)
-    totholzvol = Column('totholzvol', Numeric)
-    the_geom = Column(Geometry2D)
-
-register('ch.bafu.landesforstinventar-totholz', Totholz)
 
 
 class Histerdbeben(Base, Vector):
@@ -2042,7 +2009,7 @@ register('ch.bafu.gefahren-baugrundklassen', Baugrundklassen)
 
 
 class Wrzselect(Base, Vector):
-    __tablename__ = 'jgd_select'
+    __tablename__ = 'jgd_select_flaechen'
     __table_args__ = ({'schema': 'wrzportal', 'autoload': False})
     __bodId__ = 'ch.bafu.wrz-jagdbanngebiete_select'
     __template__ = 'templates/htmlpopup/wrz_select.mako'
@@ -2062,13 +2029,30 @@ class Wrzselect(Base, Vector):
     zusatzinformation = Column('zusatzinformation', Unicode)
     beschlussjahr = Column('beschlussjahr', Unicode)
     kanton = Column('kanton', Unicode)
+    url_kanton = Column('url_kanton', Unicode)
     the_geom = Column(Geometry2D)
 
+
+class WrzselectWege(Base, Vector):
+    __tablename__ = 'jgd_select_wege'
+    __table_args__ = ({'schema': 'wrzportal', 'autoload': False})
+    __bodId__ = 'ch.bafu.wrz-jagdbanngebiete_select'
+    __template__ = 'templates/htmlpopup/wrz_wege.mako'
+    __label__ = 'weg_id'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    weg_id = Column('weg_id', Integer)
+    wegtyp_de = Column('wegtyp_de', Unicode)
+    wegtyp_it = Column('wegtyp_it', Unicode)
+    wegtyp_fr = Column('wegtyp_fr', Unicode)
+    einschraenkungen = Column('einschraenkungen', Unicode)
+    the_geom = Column(Geometry2D)
+
+register('ch.bafu.wrz-jagdbanngebiete_select', WrzselectWege)
 register('ch.bafu.wrz-jagdbanngebiete_select', Wrzselect)
 
 
 class Wrzportal(Base, Vector):
-    __tablename__ = 'wrz_portal'
+    __tablename__ = 'wrz_portal_flaechen'
     __table_args__ = ({'schema': 'wrzportal', 'autoload': False})
     __bodId__ = 'ch.bafu.wrz-wildruhezonen_portal'
     __template__ = 'templates/htmlpopup/wrz_portal.mako'
@@ -2088,21 +2072,43 @@ class Wrzportal(Base, Vector):
     beschlussjahr = Column('beschlussjahr', Unicode)
     zusatzinformation = Column('zusatzinformation', Unicode)
     kanton = Column('kanton', Unicode)
+    url_kanton = Column('url_kanton', Unicode)
     the_geom = Column(Geometry2D)
 
+
+class WrzportalWege(Base, Vector):
+    __tablename__ = 'wrz_portal_wege'
+    __table_args__ = ({'schema': 'wrzportal', 'autoload': False})
+    __bodId__ = 'ch.bafu.wrz-wildruhezonen_portal'
+    __template__ = 'templates/htmlpopup/wrz_wege.mako'
+    __label__ = 'weg_id'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    weg_id = Column('weg_id', Integer)
+    wegtyp_de = Column('wegtyp_de', Unicode)
+    wegtyp_it = Column('wegtyp_it', Unicode)
+    wegtyp_fr = Column('wegtyp_fr', Unicode)
+    einschraenkungen = Column('einschraenkungen', Unicode)
+    the_geom = Column(Geometry2D)
+
+
+register('ch.bafu.wrz-wildruhezonen_portal', WrzportalWege)
 register('ch.bafu.wrz-wildruhezonen_portal', Wrzportal)
 
 
 class Wildtier(Base, Vector):
-    __tablename__ = 'wildtierkorridore'
+    __tablename__ = 'wildtierkorridore_national'
     __table_args__ = ({'schema': 'fauna', 'autoload': False})
     __bodId__ = 'ch.bafu.fauna-wildtierkorridor_national'
     __template__ = 'templates/htmlpopup/wildtierkorridor.mako'
-    __label__ = 'nr'
+    __label__ = 'objnummer'
+    __queryable_attributes__ = ['name', 'objnummer', 'zustand_de', 'zustand_fr', 'zustand_it']
     id = Column('bgdi_id', Integer, primary_key=True)
-    nr = Column('nr', Unicode)
-    zusta_dt = Column('zusta_dt', Unicode)
-    zusta_fr = Column('zusta_fr', Unicode)
+    objnummer = Column('objnummer', Unicode)
+    name = Column('name', Unicode)
+    zustand_de = Column('zustand_de', Unicode)
+    zustand_fr = Column('zustand_fr', Unicode)
+    zustand_it = Column('zustand_it', Unicode)
+    ref_obj_blat = Column('ref_obj_blat', Unicode)
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.fauna-wildtierkorridor_national', Wildtier)
@@ -2283,3 +2289,40 @@ class HydrogeologieMarkierversuche(Base, Vector):
     the_geom = Column(Geometry2D)
 
 register('ch.bafu.hydrogeologie-markierversuche', HydrogeologieMarkierversuche)
+
+
+class LandesForstInventarWaldMischGrad(Base, Vector):
+    __tablename__ = 'waldmischgrad'
+    __table_args__ = ({'schema': 'wald', 'autoload': False})
+    __bodId__ = 'ch.bafu.landesforstinventar-waldmischungsgrad'
+    __template__ = 'templates/htmlpopup/landesforstinventar-waldmischgrad.mako'
+    __queryable_attributes__ = ['datenstand']
+    __label__ = 'datenstand'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    datenstand = Column('datenstand', Integer)
+    the_geom = Column(Geometry2D)
+
+register(LandesForstInventarWaldMischGrad.__bodId__, LandesForstInventarWaldMischGrad)
+
+
+class LandesForstInventarVegetation:
+    __tablename__ = 'vegetationshoehenmodell'
+    __table_args__ = ({'schema': 'wald', 'autoload': False, 'extend_existing': True})
+    __template__ = 'templates/htmlpopup/landesforstinventar-vegetationshoehenmodell.mako'
+    __queryable_attributes__ = ['datenstand']
+    __label__ = 'datenstand'
+    id = Column('bgdi_id', Integer, primary_key=True)
+    datenstand = Column('datenstand', Integer)
+    the_geom = Column(Geometry2D)
+
+
+class LandesForstInventarVegetationsHoehenModell(Base, LandesForstInventarVegetation, Vector):
+    __bodId__ = 'ch.bafu.landesforstinventar-vegetationshoehenmodell'
+
+register(LandesForstInventarVegetationsHoehenModell.__bodId__, LandesForstInventarVegetationsHoehenModell)
+
+
+class LandesForstInventarVegetationsHoehenModellRelief(Base, LandesForstInventarVegetation, Vector):
+    __bodId__ = 'ch.bafu.landesforstinventar-vegetationshoehenmodell_relief'
+
+register(LandesForstInventarVegetationsHoehenModellRelief.__bodId__, LandesForstInventarVegetationsHoehenModellRelief)

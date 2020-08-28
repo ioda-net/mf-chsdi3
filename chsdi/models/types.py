@@ -1,8 +1,30 @@
 # -*- coding: utf-8 -*-
 
+import json
 import sqlalchemy.types as types
 from geoalchemy2.types import Geometry
 from sqlalchemy.sql import func
+
+
+from chsdi.lib.validation import SUPPORTED_OUTPUT_SRS
+
+
+class JsonChsdi(types.TypeDecorator):
+
+    impl = types.Unicode
+
+    def process_bind_param(self, value, dialect):
+        if value:
+            return json.dumps(value)
+        return None
+
+    def process_result_value(self, value, dialect):
+        if value:
+            return json.loads(value)
+        return {}
+
+    def copy(self):
+        return JsonChsdi()
 
 
 class DateTimeChsdi(types.TypeDecorator):
@@ -45,7 +67,11 @@ class GeometryChsdi(Geometry):
 
     @srid_out.setter
     def srid_out(self, value):
-        if value in (2056, 21781):
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            pass
+        if value in SUPPORTED_OUTPUT_SRS:
             self._srid_out = value
 
     def column_expression(self, col):
